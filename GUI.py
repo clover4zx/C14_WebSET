@@ -1,6 +1,8 @@
-import sys
 from PyQt6.QtWidgets import QApplication, QLabel
-app = QApplication(sys.argv)
+
+app = QApplication([])
+
 label = QLabel("Hello WebSET!")
 label.show()
+
 app.exec()
