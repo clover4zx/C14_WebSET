@@ -8,7 +8,8 @@ from PyQt6.QtWidgets import (
     QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QPushButton
+    QPushButton,
+    QFrame
 )
 
 #created main window - size, title, horizontal layout, sidebar (how to access other tabs)
@@ -59,6 +60,46 @@ class WebSETDashboard(QMainWindow):
 
         content_layout.addWidget(title)
         content_layout.addWidget(welcome)
+
+#adding summary cards - total scans, critical findings, open cases
+        cards_layout = QHBoxLayout()
+
+        total_scans_card = QFrame()
+        total_scans_layout = QVBoxLayout()
+        total_scans_card.setLayout(total_scans_layout)
+
+        total_scans_title = QLabel("Total Scans")
+        total_scans_number = QLabel("12")
+
+        total_scans_layout.addWidget(total_scans_title)
+        total_scans_layout.addWidget(total_scans_number)
+
+        critical_card = QFrame()
+        critical_layout = QVBoxLayout()
+        critical_card.setLayout(critical_layout)
+
+        critical_title = QLabel("Critical Findings")
+        critical_number = QLabel("3")
+
+        critical_layout.addWidget(critical_title)
+        critical_layout.addWidget(critical_number)
+
+        cases_card = QFrame()
+        cases_layout = QVBoxLayout()
+        cases_card.setLayout(cases_layout)
+
+        cases_title = QLabel("Open Cases")
+        cases_number = QLabel("5")
+
+        cases_layout.addWidget(cases_title)
+        cases_layout.addWidget(cases_number)
+
+        cards_layout.addWidget(total_scans_card)
+        cards_layout.addWidget(critical_card)
+        cards_layout.addWidget(cases_card)
+
+        content_layout.addLayout(cards_layout)
+
         content_layout.addStretch()
 
         main_layout.addWidget(content_area)
