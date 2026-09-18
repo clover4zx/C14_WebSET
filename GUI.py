@@ -11,6 +11,8 @@ from PyQt6.QtWidgets import (
     QLabel,
 
     QPushButton,
+
+    QFrame,
 )
 
 from PyQt6.QtCore import (
@@ -42,7 +44,6 @@ class WebSETDashboard(QMainWindow):
         sidebar.setLayout(sidebar_layout)
 
         main_layout.addWidget(sidebar, 0)
-        main_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
         #######
 
         # logo placement
@@ -66,6 +67,37 @@ class WebSETDashboard(QMainWindow):
         sidebar_layout.addWidget(settings_button)
 
         sidebar_layout.addStretch()
+
+        ###Right-handside###########################
+        content_area = QWidget()
+        content_layout = QVBoxLayout()
+        content_area.setLayout(content_layout)
+
+        #CSSS
+        content_layout.setContentsMargins(20, 20, 20, 0)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        main_layout.addWidget(content_area)
+
+        #Heading
+        title = QLabel("Dashboard")
+        welcome = QLabel("Security Overview of Your Web Applictions")
+
+        #CSSSS*****
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        content_layout.addWidget(title)
+        content_layout.addWidget(welcome)
+
+        
+
+
+
+
+
+
+
 
 app = QApplication(sys.argv)
 window = WebSETDashboard()
