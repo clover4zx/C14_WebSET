@@ -87,10 +87,63 @@ class WebSETDashboard(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
-        content_layout.addWidget(title)
-        content_layout.addWidget(welcome)
+        title.setStyleSheet("""
+            font-size: 24px;
+            font-weight: bold;
+        """)
 
-        
+        welcome.setStyleSheet("""
+            font-size: 16px;
+        """)
+
+        content_layout.addWidget(
+            title,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        content_layout.addWidget(
+            welcome,
+            alignment=Qt.AlignmentFlag.AlignHCenter
+        )
+
+        #Summary cards
+        cards_layout = QHBoxLayout()
+
+        #first
+        total_scans_card = QFrame()
+
+        #CSS Size
+        total_scans_card.setFixedSize(200, 120)
+
+        total_scans_card.setObjectName("total_scans_card")
+
+        total_scans_layout = QVBoxLayout()
+        total_scans_card.setLayout(total_scans_layout)
+
+        # CSSS**
+        total_scans_card.setStyleSheet("""
+            #total_scans_card {
+                border: 2px solid black;
+                border-radius: 10px;
+            }
+        """)
+
+        total_scans_title = QLabel("Total Scans")
+        total_scans_number = QLabel("12")
+
+        #CSS***
+        total_scans_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        total_scans_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        total_scans_layout.addWidget(total_scans_title)
+        total_scans_layout.addWidget(total_scans_number)
+
+        cards_layout.addWidget(
+            total_scans_card,
+            alignment=Qt.AlignmentFlag.AlignLeft
+        )
+
+        content_layout.addLayout(cards_layout)
 
 
 
