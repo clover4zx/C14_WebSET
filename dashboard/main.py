@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 #features used
 from PyQt6.QtWidgets import (
@@ -15,10 +16,22 @@ from PyQt6.QtWidgets import (
     QFrame,
 )
 
-from PyQt6.QtCore import (
-    Qt,
-)
+from PyQt6.QtCore import Qt,
 
+STYLESHEET_PATH = Path(__file__).parent / "styles.qss"
+
+NAV_ITEMS = [
+    "Dashboard",
+    "New Scan",
+    "Scan History",
+    "Cases",
+    "Reports",
+    "Settings",
+]
+
+SUMMARY_CARDS = [
+
+]
 #created main window, container
 class WebSETDashboard(QMainWindow):
     def __init__(self):
