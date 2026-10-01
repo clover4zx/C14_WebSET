@@ -30,8 +30,20 @@ NAV_ITEMS = [
 ]
 
 SUMMARY_CARDS = [
-
+    ("Total Scans", "12", "neutral"),
+    ("Vulnerabilities Found", "34", "warning"),
+    ("Critical Findings", "5", "critical"),
+    ("Open Cases", "3", "info"),
 ]
+
+def load_stylesheet(path: Path):
+    """Read the .qss file, or return an empty string if it's missing."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"Warning: stylesheet not found at {dashboard/styles.qss}.")
+        return ""
+
 #created main window, container
 class WebSETDashboard(QMainWindow):
     def __init__(self):
@@ -39,15 +51,52 @@ class WebSETDashboard(QMainWindow):
 
         self.setWindowTitle("WebSET - Website Security Evaluation Tool")
         self.setMinimumSize(1200, 700)
+
+        self.nav_buttons = {}
+        self.card_values = {}
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
         #summary area creation, seperating mainwindow into two (summary + dashboard)
-        main_layout = QHBoxLayout()
-        central_widget.setLayout(main_layout)
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.addWidget(self.build_sidebar())
+        main_layout.addWidget(self.build_content_area(), 1)
 
-        #sidebar creation
+    #sidebar creation
+    def build_sidebar(self):
         sidebar = QWidget()
+        sidebar.setObjectName("sidebar")
+
+        sidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        layout = QVBoxLayout(sidebar)
+
+        logo = QLabel("WebSET")
+        logo.setObjectName("logo")
+        layout.addWidget(logo)
+
+        for name in NAV_ITEMS:
+            button = QPushButton(name)
+            button.setObjectName("navButton")
+            layout.addWidget(button)
+            self.nav_buttons[name] = button
+
+        layout.addStretch()
+        return sidebar
+
+    #content
+    def build_content_area(self):
+        content_area = QWidget()
+
+
+
+
+
+
+
+
+
 
         ####CSS****
         sidebar.setFixedWidth(220)
