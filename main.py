@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 #features used
 from PyQt6.QtWidgets import (
@@ -27,6 +28,36 @@ from pages.cases_page import CasesPage
 from pages.reports_page import ReportsPage
 from pages.settings_page import SettingsPage
 
+    QFrame,
+)
+
+from PyQt6.QtCore import Qt,
+
+STYLESHEET_PATH = Path(__file__).parent / "styles.qss"
+
+NAV_ITEMS = [
+    "Dashboard",
+    "New Scan",
+    "Scan History",
+    "Cases",
+    "Reports",
+    "Settings",
+]
+
+SUMMARY_CARDS = [
+    ("Total Scans", "12", "neutral"),
+    ("Vulnerabilities Found", "34", "warning"),
+    ("Critical Findings", "5", "critical"),
+    ("Open Cases", "3", "info"),
+]
+
+def load_stylesheet(path: Path):
+    """Read the .qss file, or return an empty string if it's missing."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        print(f"Warning: stylesheet not found at {dashboard/styles.qss}.")
+        return ""
 
 #created main window, container
 class WebSETDashboard(QMainWindow):
@@ -35,6 +66,10 @@ class WebSETDashboard(QMainWindow):
 
         self.setWindowTitle("WebSET - Website Security Evaluation Tool")
         self.setMinimumSize(1200, 700)
+
+        self.nav_buttons = {}
+        self.card_values = {}
+
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
@@ -44,6 +79,44 @@ class WebSETDashboard(QMainWindow):
 
         #sidebar creation
         sidebar = QWidget()
+        main_layout = QHBoxLayout(central_widget)
+        main_layout.addWidget(self.build_sidebar())
+        main_layout.addWidget(self.build_content_area(), 1)
+
+    #sidebar creation
+    def build_sidebar(self):
+        sidebar = QWidget()
+        sidebar.setObjectName("sidebar")
+
+        sidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
+
+        layout = QVBoxLayout(sidebar)
+
+        logo = QLabel("WebSET")
+        logo.setObjectName("logo")
+        layout.addWidget(logo)
+
+        for name in NAV_ITEMS:
+            button = QPushButton(name)
+            button.setObjectName("navButton")
+            layout.addWidget(button)
+            self.nav_buttons[name] = button
+
+        layout.addStretch()
+        return sidebar
+
+    #content
+    def build_content_area(self):
+        content_area = QWidget()
+
+
+
+
+
+
+
+
+
 
         ####CSS****
         sidebar.setFixedWidth(220)
@@ -107,6 +180,87 @@ class WebSETDashboard(QMainWindow):
 
         # Start on the Dashboard page.
         self.stack.setCurrentWidget(self.dashboard_page)
+        content_area = QWidget()
+        content_layout = QVBoxLayout()
+        content_area.setLayout(content_layout)
+
+        #CSSS
+        content_layout.setContentsMargins(20, 20, 20, 0)
+        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+
+        main_layout.addWidget(content_area)
+
+        #Heading
+        title = QLabel("Dashboard")
+        welcome = QLabel("Security Overview of Your Web Applictions")
+
+        #CSSSS*****
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        title.setStyleSheet("""
+            font-size: 24px;
+            font-weight: bold;
+        """)
+
+        welcome.setStyleSheet("""
+            font-size: 16px;
+        """)
+
+        content_layout.addWidget(
+            title,
+            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
+        )
+
+        content_layout.addWidget(
+            welcome,
+            alignment=Qt.AlignmentFlag.AlignHCenter
+        )
+
+        #Summary cards
+        cards_layout = QHBoxLayout()
+
+        #first
+        total_scans_card = QFrame()
+
+        #CSS Size
+        total_scans_card.setFixedSize(200, 120)
+
+        total_scans_card.setObjectName("total_scans_card")
+
+        total_scans_layout = QVBoxLayout()
+        total_scans_card.setLayout(total_scans_layout)
+
+        # CSSS**
+        total_scans_card.setStyleSheet("""
+            #total_scans_card {
+                border: 2px solid black;
+                border-radius: 10px;
+            }
+        """)
+
+        total_scans_title = QLabel("Total Scans")
+        total_scans_number = QLabel("12")
+
+        #CSS***
+        total_scans_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        total_scans_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        total_scans_layout.addWidget(total_scans_title)
+        total_scans_layout.addWidget(total_scans_number)
+
+        cards_layout.addWidget(
+            total_scans_card,
+            alignment=Qt.AlignmentFlag.AlignLeft
+        )
+
+        content_layout.addLayout(cards_layout)
+
+
+
+
+
+
 
 
 app = QApplication(sys.argv)
