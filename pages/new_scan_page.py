@@ -1,26 +1,29 @@
 """
 pages/new_scan_page.py
-Shown when the "New Scan" sidebar button is clicked. Placeholder for
-now — build the real scan-configuration form here later.
+Shown when the "New Scan" sidebar button is clicked. Just a tab
+container — the actual content for each tab lives in its own file:
+    - pages/static_scan_tab.py   (StaticScanTab)
+    - pages/dynamic_scan_tab.py  (DynamicScanTab)
 """
 
-from PyQt6.QtWidgets import QLabel, QVBoxLayout, QWidget
-from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
+
+from app.widgets import page_header
+from pages.dynamic_scan_tab import DynamicScanTab
+from pages.static_scan_tab import StaticScanTab
 
 
 class NewScanPage(QWidget):
     def __init__(self):
         super().__init__()
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 0)
-        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(20, 20, 20, 0)
+        root.setSpacing(12)
 
-        title = QLabel("New Scan")
-        subtitle = QLabel("Configure and launch a new scan against a target")
+        root.addWidget(page_header("New Scan", "Configure a static or dynamic scan"))
 
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        subtitle.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        layout.addWidget(title)
-        layout.addWidget(subtitle)
+        tabs = QTabWidget()
+        tabs.addTab(StaticScanTab(), "Static")
+        tabs.addTab(DynamicScanTab(), "Dynamic")
+        root.addWidget(tabs)
