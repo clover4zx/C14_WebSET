@@ -1,32 +1,20 @@
 """
 widgets.py
-Common, reusable UI components for WebSET. Every page (Dashboard, Passive
-Scan, Active Scan, Manual Injection, Case Management, Reports, Settings)
-should be built out of these instead of raw QPushButton/QLabel calls, so
-the whole app stays visually consistent no matter who builds which page.
-
-Sections:
-    - Navigation      : make_nav_button
-    - Layout           : page_header, Card, section_header
-    - Buttons          : primary_button, secondary_button, danger_button, icon_button
-    - Inputs           : LabeledInput, LabeledCombo, SearchBar
-    - Data display     : StatCard, severity_pill, status_pill, DataTable
-    - Feedback         : Banner, ConfirmDialog
+Common, reusable UI components. Pages should be built out of these
+instead of raw QPushButton/QLabel calls, so every page looks
+consistent no matter who builds it.
 """
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import (
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import (
+    QCheckBox,
     QComboBox,
-    QDialog,
-    QDialogButtonBox,
+    QFileDialog,
     QFrame,
     QHBoxLayout,
-    QHeaderView,
     QLabel,
     QLineEdit,
     QPushButton,
-    QTableWidget,
-    QTableWidgetItem,
     QVBoxLayout,
     QWidget,
 )
@@ -35,30 +23,12 @@ from app import theme
 
 
 # ---------------------------------------------------------------------------
-# Navigation
-# ---------------------------------------------------------------------------
-def make_nav_button(text: str, icon_char: str) -> QPushButton:
-    """Checkable sidebar navigation button."""
-    btn = QPushButton(f"  {icon_char}   {text}")
-    btn.setObjectName("NavButton")
-    btn.setCheckable(True)
-    btn.setCursor(Qt.PointingHandCursor)
-    btn.setMinimumHeight(42)
-    return btn
-
-
-# ---------------------------------------------------------------------------
 # Layout
 # ---------------------------------------------------------------------------
 def page_header(title: str, subtitle: str, action: QWidget = None) -> QFrame:
-    """Top bar for a page: title + subtitle, with an optional action widget
-    (e.g. a primary button) docked to the right."""
     frame = QFrame()
-    frame.setObjectName("TopBar")
-    frame.setMinimumHeight(64)
-
     layout = QHBoxLayout(frame)
-    layout.setContentsMargins(24, 10, 24, 10)
+    layout.setContentsMargins(0, 0, 0, 10)
 
     text_box = QVBoxLayout()
     text_box.setSpacing(2)
@@ -78,8 +48,7 @@ def page_header(title: str, subtitle: str, action: QWidget = None) -> QFrame:
 
 
 class Card(QFrame):
-    """A bordered, rounded panel. Use as a container for any grouped content
-    (forms, tables, summaries) so it matches the dashboard's stat cards."""
+    """A bordered, rounded panel used to group related content."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -94,7 +63,6 @@ class Card(QFrame):
 
 
 def section_header(text: str) -> QLabel:
-    """Bold label used to divide a page into sections, e.g. 'Recent Findings'."""
     lbl = QLabel(text)
     lbl.setProperty("class", "SectionHeader")
     return lbl
@@ -104,43 +72,18 @@ def section_header(text: str) -> QLabel:
 # Buttons
 # ---------------------------------------------------------------------------
 def primary_button(text: str) -> QPushButton:
-    """High-emphasis action, e.g. 'Start Scan', 'Save Case'. One per view, max."""
     btn = QPushButton(text)
     btn.setProperty("class", "Primary")
-    btn.setCursor(Qt.PointingHandCursor)
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.setMinimumHeight(36)
     return btn
 
 
 def secondary_button(text: str) -> QPushButton:
-    """Lower-emphasis action, e.g. 'Cancel', 'Export'."""
     btn = QPushButton(text)
     btn.setProperty("class", "Secondary")
-    btn.setCursor(Qt.PointingHandCursor)
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
     btn.setMinimumHeight(36)
-    return btn
-
-
-def danger_button(text: str) -> QPushButton:
-    """Destructive/high-risk action, e.g. 'Delete Case', 'Run Active Scan'."""
-    btn = QPushButton(text)
-    btn.setProperty("class", "Primary")
-    btn.setCursor(Qt.PointingHandCursor)
-    btn.setMinimumHeight(36)
-    btn.setStyleSheet(
-        f"background-color: {theme.ACCENT_DANGER}; color: white;"
-    )
-    return btn
-
-
-def icon_button(icon_char: str, tooltip: str = "") -> QPushButton:
-    """Small square button for toolbars/table rows, e.g. a refresh or delete icon."""
-    btn = QPushButton(icon_char)
-    btn.setProperty("class", "Secondary")
-    btn.setCursor(Qt.PointingHandCursor)
-    btn.setFixedSize(32, 32)
-    if tooltip:
-        btn.setToolTip(tooltip)
     return btn
 
 
@@ -177,7 +120,7 @@ class LabeledInput(QWidget):
 
 
 class LabeledCombo(QWidget):
-    """A QComboBox with a caption above it, e.g. 'Severity'."""
+    """A QComboBox with a caption above it, e.g. 'Scan Profile'."""
 
     def __init__(self, label: str, options: list, parent=None):
         super().__init__(parent)
@@ -202,130 +145,82 @@ class LabeledCombo(QWidget):
         return self.combo.currentText()
 
 
-class SearchBar(QWidget):
-    """A search input with a magnifier prefix, for filtering tables of findings."""
+def make_checkbox(label: str, checked: bool = False) -> QCheckBox:
+    """A styled checkbox, for toggle options like 'Check HTTP Headers'."""
+    box = QCheckBox(label)
+    box.setChecked(checked)
+    box.setCursor(Qt.CursorShape.PointingHandCursor)
+    return box
 
-    text_changed = pyqtSignal(str)
 
-    def __init__(self, placeholder: str = "Search...", parent=None):
+class FileUploadBox(QWidget):
+    """
+    A file-upload row: a 'Browse...' button plus a label showing the
+    chosen file's name. Used for things like letting the user attach a
+    local HTML file for static analysis.
+
+    file_selected(str) fires with just the file NAME (not the full path)
+    whenever a file is chosen — that's what the backend team can connect
+    to. The full path is available via self.file_path() if needed.
+
+    file_filter controls what QFileDialog shows, e.g. "HTML Files (*.html *.htm)".
+    """
+
+    file_selected = pyqtSignal(str)
+
+    def __init__(self, label: str, file_filter: str = "All Files (*)", parent=None):
         super().__init__(parent)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(10, 0, 10, 0)
-        layout.setSpacing(6)
-
-        self.setStyleSheet(
-            f"background-color: {theme.BG_DARK}; border: 1px solid {theme.BORDER}; border-radius: 6px;"
-        )
-        self.setFixedHeight(34)
-
-        icon = QLabel("🔍")
-        self.field = QLineEdit()
-        self.field.setPlaceholderText(placeholder)
-        self.field.setStyleSheet("border: none; background: transparent;")
-        self.field.textChanged.connect(self.text_changed.emit)
-
-        layout.addWidget(icon)
-        layout.addWidget(self.field)
-
-
-# ---------------------------------------------------------------------------
-# Data display
-# ---------------------------------------------------------------------------
-class StatCard(QFrame):
-    """Small dashboard metric card, e.g. 'Critical Findings: 3'."""
-
-    def __init__(self, label: str, value: str, accent: str = theme.ACCENT):
-        super().__init__()
-        self.setProperty("class", "Card")
-        self.setMinimumHeight(90)
+        self._file_path = ""
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 14, 18, 14)
-
-        self.value_label = QLabel(value)
-        self.value_label.setProperty("class", "CardValue")
-        self.value_label.setStyleSheet(f"color: {accent};")
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(4)
 
         caption = QLabel(label)
-        caption.setProperty("class", "CardLabel")
-
-        layout.addWidget(self.value_label)
+        caption.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 11px; font-weight: 600;")
         layout.addWidget(caption)
 
-    def set_value(self, value: str):
-        self.value_label.setText(value)
+        row = QHBoxLayout()
+        row.setSpacing(8)
 
+        self.browse_button = secondary_button("Browse...")
+        self.browse_button.clicked.connect(self._on_browse)
+        row.addWidget(self.browse_button)
 
-_SEVERITY_COLORS = {
-    "Critical": theme.ACCENT_DANGER,
-    "High": "#e07a3f",
-    "Medium": theme.ACCENT_WARN,
-    "Low": "#5fb0e0",
-    "Info": theme.TEXT_MUTED,
-}
+        self.name_label = QLabel("No file selected")
+        self.name_label.setStyleSheet(f"color: {theme.TEXT_MUTED};")
+        row.addWidget(self.name_label, stretch=1)
 
-_STATUS_COLORS = {
-    "Open": theme.ACCENT_WARN,
-    "Confirmed": theme.ACCENT_DANGER,
-    "False Positive": theme.TEXT_MUTED,
-    "Fixed": theme.ACCENT,
-    "Ignored": theme.TEXT_MUTED,
-}
+        layout.addLayout(row)
 
+        self._file_filter = file_filter
 
-def _pill(text: str, color: str) -> QLabel:
-    lbl = QLabel(text)
-    lbl.setProperty("class", "Pill")
-    lbl.setAlignment(Qt.AlignCenter)
-    lbl.setStyleSheet(
-        f"background-color: {color}33; color: {color}; border: 1px solid {color}88;"
-    )
-    return lbl
+    def _on_browse(self):
+        path, _ = QFileDialog.getOpenFileName(self, "Select a file", "", self._file_filter)
+        if not path:
+            return  # user cancelled
+        self._file_path = path
+        file_name = path.split("/")[-1].split("\\")[-1]
+        self.name_label.setText(file_name)
+        self.name_label.setStyleSheet(f"color: {theme.TEXT_PRIMARY};")
+        self.file_selected.emit(file_name)
 
+    def file_name(self) -> str:
+        """Just the file name, e.g. 'index.html'. Empty string if nothing chosen."""
+        if not self._file_path:
+            return ""
+        return self._file_path.split("/")[-1].split("\\")[-1]
 
-def severity_pill(severity: str) -> QLabel:
-    """Colored pill for Critical/High/Medium/Low/Info."""
-    return _pill(severity, _SEVERITY_COLORS.get(severity, theme.TEXT_MUTED))
-
-
-def status_pill(status: str) -> QLabel:
-    """Colored pill for Open/Confirmed/False Positive/Fixed/Ignored."""
-    return _pill(status, _STATUS_COLORS.get(status, theme.TEXT_MUTED))
-
-
-class DataTable(QTableWidget):
-    """Pre-styled table for findings/case lists. Pass column headers up front,
-    then use set_rows() with a list of tuples to populate it."""
-
-    def __init__(self, headers: list, parent=None):
-        super().__init__(0, len(headers), parent)
-        self.setHorizontalHeaderLabels(headers)
-        self.verticalHeader().setVisible(False)
-        self.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.setSelectionBehavior(QTableWidget.SelectRows)
-        self.horizontalHeader().setSectionResizeMode(0, QHeaderView.Stretch)
-        for col in range(1, len(headers)):
-            self.horizontalHeader().setSectionResizeMode(col, QHeaderView.ResizeToContents)
-
-    def set_rows(self, rows: list):
-        """rows: list of tuples. A cell value of QWidget (e.g. a pill) is embedded
-        via setCellWidget; anything else becomes a QTableWidgetItem."""
-        self.setRowCount(len(rows))
-        for r, row_data in enumerate(rows):
-            self.setRowHeight(r, 40)
-            for c, value in enumerate(row_data):
-                if isinstance(value, QWidget):
-                    self.setCellWidget(r, c, value)
-                else:
-                    self.setItem(r, c, QTableWidgetItem(str(value)))
+    def file_path(self) -> str:
+        """The full path on disk. Empty string if nothing chosen."""
+        return self._file_path
 
 
 # ---------------------------------------------------------------------------
 # Feedback
 # ---------------------------------------------------------------------------
 class Banner(QFrame):
-    """Inline notification strip, e.g. scan-complete or error messages.
-    kind: 'info' | 'success' | 'warning' | 'danger'"""
+    """Inline notification strip. kind: 'info' | 'success' | 'warning' | 'danger'"""
 
     _COLORS = {
         "info": "#5fb0e0",
@@ -346,31 +241,3 @@ class Banner(QFrame):
         lbl.setStyleSheet(f"color: {color}; font-weight: 600; border: none; background: transparent;")
         lbl.setWordWrap(True)
         layout.addWidget(lbl)
-
-
-class ConfirmDialog(QDialog):
-    """Reusable Yes/No confirmation, e.g. 'I am authorised to test this
-    target' or 'Delete this case?'."""
-
-    def __init__(self, title: str, message: str, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle(title)
-        self.setMinimumWidth(360)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(20, 20, 20, 20)
-        layout.setSpacing(16)
-
-        msg = QLabel(message)
-        msg.setWordWrap(True)
-        layout.addWidget(msg)
-
-        buttons = QDialogButtonBox(QDialogButtonBox.Yes | QDialogButtonBox.No)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        layout.addWidget(buttons)
-
-    @staticmethod
-    def ask(title: str, message: str, parent=None) -> bool:
-        dlg = ConfirmDialog(title, message, parent)
-        return dlg.exec_() == QDialog.Accepted
