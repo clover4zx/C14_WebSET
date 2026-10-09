@@ -12,6 +12,7 @@ severity counts add up to the "Vulnerabilities Found" card) so the
 demo looks believable.
 """
 
+from data.cases_data import get_case_status_counts
 from data.scan_history_data import get_scan_history
 
 
@@ -30,7 +31,7 @@ def get_dashboard_summary() -> dict:
         "total_scans": 12,
         "vulnerabilities": 34,
         "critical": 5,
-        "open_cases": 3,
+        "open_cases": get_case_status_counts()["Open"],   # live from the Cases page
     }
 
 

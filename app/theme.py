@@ -35,6 +35,13 @@ SEVERITY_COLOURS = {
     "Low": ACCENT_INFO,
 }
 
+# Colour for each case status — used by the Cases page
+CASE_STATUS_COLOURS = {
+    "Open": ACCENT_INFO,
+    "In Progress": ACCENT_WARN,
+    "Resolved": ACCENT,
+}
+
 # Colour for each scan status — used by the Recent Scans table
 STATUS_COLOURS = {
     "Completed": ACCENT,
@@ -170,6 +177,15 @@ QLabel.SectionHeader {{
 #StatValue[severity="warning"]  {{ color: {ACCENT_WARN}; }}
 #StatValue[severity="critical"] {{ color: {ACCENT_DANGER}; }}
 #StatValue[severity="info"]     {{ color: {ACCENT_INFO}; }}
+#StatValue[severity="success"]  {{ color: {ACCENT}; }}
+
+/* Highlighted box, e.g. the remediation advice on the Cases page */
+#CalloutBox {{
+    background-color: {rgba(ACCENT, 26)};
+    border: 1px solid {rgba(ACCENT, 90)};
+    border-radius: 8px;
+    padding: 10px 12px;
+}}
 
 /* ---------- Buttons ---------- */
 QPushButton.Primary {{
