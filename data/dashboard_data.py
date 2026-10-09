@@ -12,6 +12,9 @@ severity counts add up to the "Vulnerabilities Found" card) so the
 demo looks believable.
 """
 
+from data.scan_history_data import get_scan_history
+
+
 
 def get_dashboard_summary() -> dict:
     """Numbers for the four summary cards.
@@ -70,20 +73,7 @@ def get_activity_over_time() -> dict:
 def get_recent_scans(limit: int = 5) -> list:
     """The most recent scans, newest first.
 
-    Each scan is a dict with: target, date, scan_type, status, findings.
-    status is one of "Completed", "Running" or "Failed".
+    Uses the same list as the Scan History page, so the two always agree.
+    Each scan is a dict with (at least): target, date, scan_type, status, findings.
     """
-    # TODO (backend): SELECT ... FROM scans ORDER BY started_at DESC LIMIT ?
-    scans = [
-        {"target": "http://dvwa.local/vulnerabilities/sqli", "date": "09/10/2026 7:42 pm",
-         "scan_type": "Dynamic", "status": "Running", "findings": 0},
-        {"target": "http://juiceshop.local:3000", "date": "09/10/2026 4:15 pm",
-         "scan_type": "Static", "status": "Completed", "findings": 7},
-        {"target": "http://dvwa.local/login.php", "date": "08/10/2026 11:03 am",
-         "scan_type": "Static", "status": "Completed", "findings": 4},
-        {"target": "http://juiceshop.local:3000/#/login", "date": "07/10/2026 3:27 pm",
-         "scan_type": "Dynamic", "status": "Failed", "findings": 0},
-        {"target": "http://dvwa.local", "date": "06/10/2026 9:50 am",
-         "scan_type": "Static", "status": "Completed", "findings": 5},
-    ]
-    return scans[:limit]
+    return get_scan_history()[:limit]

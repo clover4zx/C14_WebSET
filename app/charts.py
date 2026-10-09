@@ -100,6 +100,8 @@ class LineChart(QWidget):
         self._labels = []
         self._series = {}
         self.setMinimumHeight(240)
+        # take any spare height in its card, so the heading stays at the top
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
     def set_data(self, labels: list, series: dict):
         """labels: ["W1", "W2", ...]; series: {"Scans": [..], "Findings": [..]}"""

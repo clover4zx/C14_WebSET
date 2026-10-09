@@ -221,6 +221,11 @@ QTabBar::tab:selected {{
     font-weight: 600;
 }}
 
+/* Secondary text, e.g. labels next to values, result counts */
+#MutedText {{
+    color: {TEXT_MUTED};
+}}
+
 /* ---------- Tables ---------- */
 QTableWidget {{
     background-color: transparent;
