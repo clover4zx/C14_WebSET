@@ -31,8 +31,8 @@ etc.) whenever the user clicks a button.
 from dataclasses import dataclass
 from typing import Optional
 
-from PyQt5.QtCore import Qt, pyqtSignal
-from PyQt5.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from app.widgets import make_nav_button
 
@@ -65,6 +65,8 @@ class Sidebar(QWidget):
     def __init__(self, nav_items, title="WebSET", subtitle="Website Security Evaluation Tool", parent=None):
         super().__init__(parent)
         self.setObjectName("Sidebar")
+        # Plain QWidgets need this for a stylesheet background to show
+        self.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
         self.setFixedWidth(230)
 
         self.nav_items = nav_items
@@ -91,7 +93,7 @@ class Sidebar(QWidget):
         layout.addStretch()  # pushes everything above upward, footer stays at bottom
 
         footer = QLabel("Team WebGoats · Group C14")
-        footer.setStyleSheet("color: #8b93a7; font-size: 10px; padding: 8px 16px;")
+        footer.setObjectName("SidebarFooter")
         layout.addWidget(footer)
 
         # Highlight the first button by default, like most apps opening
@@ -121,13 +123,10 @@ class Sidebar(QWidget):
     @staticmethod
     def _build_badge(text: str) -> QLabel:
         badge = QLabel(text)
-        badge.setAlignment(Qt.AlignCenter)
+        badge.setObjectName("NavBadge")   # styled in theme.py
+        badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
         badge.setFixedHeight(18)
         badge.setMinimumWidth(18)
-        badge.setStyleSheet(
-            "background-color: #3ddc9733; color: #3ddc97; border: 1px solid #3ddc9788; "
-            "border-radius: 9px; font-size: 10px; font-weight: 700; padding: 0px 6px; margin-right: 10px;"
-        )
         return badge
 
     def _on_clicked(self, key: str):
