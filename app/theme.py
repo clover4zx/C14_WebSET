@@ -17,6 +17,7 @@ ACCENT = "#3ddc97"
 ACCENT_WARN = "#f2c14e"
 ACCENT_DANGER = "#e5484d"
 ACCENT_INFO = "#5fb0e0"
+ACCENT_HIGH = "#f0883e"
 TEXT_PRIMARY = "#e6e9ef"
 TEXT_MUTED = "#8b93a7"
 BORDER = "#2a3140"
@@ -25,6 +26,21 @@ SIDEBAR_BG = "#24133D"
 SIDEBAR_ACTIVE = "#33205A"
 
 FONT_FAMILY = "Segoe UI, Arial, sans-serif"
+
+# Colour for each finding severity — used by charts and tables
+SEVERITY_COLOURS = {
+    "Critical": ACCENT_DANGER,
+    "High": ACCENT_HIGH,
+    "Medium": ACCENT_WARN,
+    "Low": ACCENT_INFO,
+}
+
+# Colour for each scan status — used by the Recent Scans table
+STATUS_COLOURS = {
+    "Completed": ACCENT,
+    "Running": ACCENT_INFO,
+    "Failed": ACCENT_DANGER,
+}
 
 
 def rgba(hex_color: str, alpha: int) -> str:
@@ -203,6 +219,35 @@ QTabBar::tab:selected {{
     background-color: {BG_PANEL_ALT};
     color: {TEXT_PRIMARY};
     font-weight: 600;
+}}
+
+/* ---------- Tables ---------- */
+QTableWidget {{
+    background-color: transparent;
+    border: none;
+    gridline-color: transparent;
+    selection-background-color: {SIDEBAR_ACTIVE};
+    selection-color: {TEXT_PRIMARY};
+}}
+
+QTableWidget::item {{
+    padding: 0px 8px;
+    border-bottom: 1px solid {BORDER};
+}}
+
+QHeaderView, QTableCornerButton::section {{
+    background-color: transparent;
+    border: none;
+}}
+
+QHeaderView::section {{
+    background-color: transparent;
+    color: {TEXT_MUTED};
+    font-size: 11px;
+    font-weight: 600;
+    border: none;
+    border-bottom: 1px solid {BORDER};
+    padding: 6px 8px;
 }}
 
 /* ---------- Inputs ---------- */
