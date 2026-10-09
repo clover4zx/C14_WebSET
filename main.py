@@ -1,24 +1,29 @@
 import sys
-from pathlib import Path
+
 
 #features used
 from PyQt6.QtWidgets import (
-    QApplication,
-    QMainWindow,
+   QApplication,
+   QMainWindow,
 
-    QWidget,
-    QHBoxLayout,
-    QVBoxLayout,
-    QLabel,
 
-    QPushButton,
+   QWidget,
+   QHBoxLayout,
+   QVBoxLayout,
+   QLabel,
 
-    QStackedWidget,
+
+   QPushButton,
+
+
+   QStackedWidget,
 )
+
 
 from PyQt6.QtCore import (
-    Qt,
+   Qt,
 )
+
 
 # each sidebar button's page lives in its own file under pages/
 from pages.dashboard_page import DashboardPage
@@ -28,237 +33,104 @@ from pages.cases_page import CasesPage
 from pages.reports_page import ReportsPage
 from pages.settings_page import SettingsPage
 
-    QFrame,
-)
 
-from PyQt6.QtCore import Qt,
 
-STYLESHEET_PATH = Path(__file__).parent / "styles.qss"
-
-NAV_ITEMS = [
-    "Dashboard",
-    "New Scan",
-    "Scan History",
-    "Cases",
-    "Reports",
-    "Settings",
-]
-
-SUMMARY_CARDS = [
-    ("Total Scans", "12", "neutral"),
-    ("Vulnerabilities Found", "34", "warning"),
-    ("Critical Findings", "5", "critical"),
-    ("Open Cases", "3", "info"),
-]
-
-def load_stylesheet(path: Path):
-    """Read the .qss file, or return an empty string if it's missing."""
-    try:
-        return path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        print(f"Warning: stylesheet not found at {dashboard/styles.qss}.")
-        return ""
 
 #created main window, container
 class WebSETDashboard(QMainWindow):
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle("WebSET - Website Security Evaluation Tool")
-        self.setMinimumSize(1200, 700)
-
-        self.nav_buttons = {}
-        self.card_values = {}
-
-        central_widget = QWidget()
-        self.setCentralWidget(central_widget)
-
-        #summary area creation, seperating mainwindow into two (summary + dashboard)
-        main_layout = QHBoxLayout()
-        central_widget.setLayout(main_layout)
-
-        #sidebar creation
-        sidebar = QWidget()
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.addWidget(self.build_sidebar())
-        main_layout.addWidget(self.build_content_area(), 1)
-
-    #sidebar creation
-    def build_sidebar(self):
-        sidebar = QWidget()
-        sidebar.setObjectName("sidebar")
-
-        sidebar.setAttribute(Qt.WidgetAttribute.WA_StyledBackground, True)
-
-        layout = QVBoxLayout(sidebar)
-
-        logo = QLabel("WebSET")
-        logo.setObjectName("logo")
-        layout.addWidget(logo)
-
-        for name in NAV_ITEMS:
-            button = QPushButton(name)
-            button.setObjectName("navButton")
-            layout.addWidget(button)
-            self.nav_buttons[name] = button
-
-        layout.addStretch()
-        return sidebar
-
-    #content
-    def build_content_area(self):
-        content_area = QWidget()
+   def __init__(self):
+       super().__init__()
 
 
+       self.setWindowTitle("WebSET - Website Security Evaluation Tool")
+       self.setMinimumSize(1200, 700)
+       central_widget = QWidget()
+       self.setCentralWidget(central_widget)
 
 
+       #summary area creation, seperating mainwindow into two (summary + dashboard)
+       main_layout = QHBoxLayout()
+       central_widget.setLayout(main_layout)
 
 
+       #sidebar creation
+       sidebar = QWidget()
 
 
+       ####CSS****
+       sidebar.setFixedWidth(220)
+       sidebar.setStyleSheet("background-color: #24133D;")
 
 
-        ####CSS****
-        sidebar.setFixedWidth(220)
-        sidebar.setStyleSheet("background-color: #24133D;")
-
-        sidebar_layout = QVBoxLayout()
-        sidebar.setLayout(sidebar_layout)
-
-        main_layout.addWidget(sidebar, 0)
-        #######
-
-        # logo placement
-        logo = QLabel("WebSET")
-        sidebar_layout.addWidget(logo)
-
-        #nav buttons
-        dashboard_button = QPushButton("Dashboard")
-        new_scan_button = QPushButton("New Scan")
-        history_button = QPushButton("Scan History")
-        cases_button = QPushButton("Cases")
-        reports_button = QPushButton("Reports")
-        settings_button = QPushButton("Settings")
-
-        #widgets
-        sidebar_layout.addWidget(dashboard_button)
-        sidebar_layout.addWidget(new_scan_button)
-        sidebar_layout.addWidget(history_button)
-        sidebar_layout.addWidget(cases_button)
-        sidebar_layout.addWidget(reports_button)
-        sidebar_layout.addWidget(settings_button)
-
-        sidebar_layout.addStretch()
-
-        ###Right-handside###########################
-        # Holds every page; only one is visible at a time.
-        self.stack = QStackedWidget()
-
-        self.dashboard_page = DashboardPage()
-        self.new_scan_page = NewScanPage()
-        self.history_page = ScanHistoryPage()
-        self.cases_page = CasesPage()
-        self.reports_page = ReportsPage()
-        self.settings_page = SettingsPage()
-
-        self.stack.addWidget(self.dashboard_page)
-        self.stack.addWidget(self.new_scan_page)
-        self.stack.addWidget(self.history_page)
-        self.stack.addWidget(self.cases_page)
-        self.stack.addWidget(self.reports_page)
-        self.stack.addWidget(self.settings_page)
-
-        main_layout.addWidget(self.stack, 1)
-
-        # Wire each button to show its matching page.
-        dashboard_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.dashboard_page))
-        new_scan_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.new_scan_page))
-        history_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.history_page))
-        cases_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.cases_page))
-        reports_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.reports_page))
-        settings_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.settings_page))
-
-        # Start on the Dashboard page.
-        self.stack.setCurrentWidget(self.dashboard_page)
-        content_area = QWidget()
-        content_layout = QVBoxLayout()
-        content_area.setLayout(content_layout)
-
-        #CSSS
-        content_layout.setContentsMargins(20, 20, 20, 0)
-        content_layout.setAlignment(Qt.AlignmentFlag.AlignTop)
-
-        main_layout.addWidget(content_area)
-
-        #Heading
-        title = QLabel("Dashboard")
-        welcome = QLabel("Security Overview of Your Web Applictions")
-
-        #CSSSS*****
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        welcome.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        title.setStyleSheet("""
-            font-size: 24px;
-            font-weight: bold;
-        """)
-
-        welcome.setStyleSheet("""
-            font-size: 16px;
-        """)
-
-        content_layout.addWidget(
-            title,
-            alignment=Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignHCenter
-        )
-
-        content_layout.addWidget(
-            welcome,
-            alignment=Qt.AlignmentFlag.AlignHCenter
-        )
-
-        #Summary cards
-        cards_layout = QHBoxLayout()
-
-        #first
-        total_scans_card = QFrame()
-
-        #CSS Size
-        total_scans_card.setFixedSize(200, 120)
-
-        total_scans_card.setObjectName("total_scans_card")
-
-        total_scans_layout = QVBoxLayout()
-        total_scans_card.setLayout(total_scans_layout)
-
-        # CSSS**
-        total_scans_card.setStyleSheet("""
-            #total_scans_card {
-                border: 2px solid black;
-                border-radius: 10px;
-            }
-        """)
-
-        total_scans_title = QLabel("Total Scans")
-        total_scans_number = QLabel("12")
-
-        #CSS***
-        total_scans_title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        total_scans_number.setAlignment(Qt.AlignmentFlag.AlignCenter)
-
-        total_scans_layout.addWidget(total_scans_title)
-        total_scans_layout.addWidget(total_scans_number)
-
-        cards_layout.addWidget(
-            total_scans_card,
-            alignment=Qt.AlignmentFlag.AlignLeft
-        )
-
-        content_layout.addLayout(cards_layout)
+       sidebar_layout = QVBoxLayout()
+       sidebar.setLayout(sidebar_layout)
 
 
+       main_layout.addWidget(sidebar, 0)
+       #######
 
 
+       # logo placement
+       logo = QLabel("WebSET")
+       sidebar_layout.addWidget(logo)
+
+
+       #nav buttons
+       dashboard_button = QPushButton("Dashboard")
+       new_scan_button = QPushButton("New Scan")
+       history_button = QPushButton("Scan History")
+       cases_button = QPushButton("Cases")
+       reports_button = QPushButton("Reports")
+       settings_button = QPushButton("Settings")
+
+
+       #widgets
+       sidebar_layout.addWidget(dashboard_button)
+       sidebar_layout.addWidget(new_scan_button)
+       sidebar_layout.addWidget(history_button)
+       sidebar_layout.addWidget(cases_button)
+       sidebar_layout.addWidget(reports_button)
+       sidebar_layout.addWidget(settings_button)
+
+
+       sidebar_layout.addStretch()
+
+
+       ###Right-handside###########################
+       # Holds every page; only one is visible at a time.
+       self.stack = QStackedWidget()
+
+
+       self.dashboard_page = DashboardPage()
+       self.new_scan_page = NewScanPage()
+       self.history_page = ScanHistoryPage()
+       self.cases_page = CasesPage()
+       self.reports_page = ReportsPage()
+       self.settings_page = SettingsPage()
+
+
+       self.stack.addWidget(self.dashboard_page)
+       self.stack.addWidget(self.new_scan_page)
+       self.stack.addWidget(self.history_page)
+       self.stack.addWidget(self.cases_page)
+       self.stack.addWidget(self.reports_page)
+       self.stack.addWidget(self.settings_page)
+
+
+       main_layout.addWidget(self.stack, 1)
+
+
+       # Wire each button to show its matching page.
+       dashboard_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.dashboard_page))
+       new_scan_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.new_scan_page))
+       history_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.history_page))
+       cases_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.cases_page))
+       reports_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.reports_page))
+       settings_button.clicked.connect(lambda: self.stack.setCurrentWidget(self.settings_page))
+
+
+       # Start on the Dashboard page.
+       self.stack.setCurrentWidget(self.dashboard_page)
 
 
 
@@ -266,5 +138,6 @@ class WebSETDashboard(QMainWindow):
 app = QApplication(sys.argv)
 window = WebSETDashboard()
 window.show()
+
 
 sys.exit(app.exec())
