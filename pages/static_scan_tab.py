@@ -18,6 +18,7 @@ from app.widgets import (
     LabeledCombo,
     LabeledInput,
     make_checkbox,
+    make_scrollable,
     primary_button,
     secondary_button,
     section_header,
@@ -28,9 +29,18 @@ class StaticScanTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        root = QVBoxLayout(self)
+        # Everything in the form is built inside `content`. make_scrollable()
+        # wraps it in a scroll area: if the window is too short, a scrollbar
+        # appears instead of the form being squashed or running off-screen.
+        # Width still follows the window, so inputs stretch sideways as it grows.
+        content = QWidget()
+        root = QVBoxLayout(content)
         root.setContentsMargins(16, 16, 16, 16)
         root.setSpacing(16)
+
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.addWidget(make_scrollable(content))
 
         # --- target ---
         root.addWidget(section_header("Target"))
@@ -43,15 +53,15 @@ class StaticScanTab(QWidget):
         root.addWidget(section_header("Scan Configuration"))
         config_card = Card()
 
+        # The "1" after each widget is a stretch factor: both get an equal
+        # share of the row, and keep sharing it as the window is resized.
         options_row = QHBoxLayout()
-        self.crawl_depth_input = LabeledInput("Crawl Depth", "3")
         self.timeout_input = LabeledInput("Request Timeout (s)", "10")
         self.scan_profile_combo = LabeledCombo(
             "Scan Profile", ["Quick", "Standard", "Thorough"]
         )
-        options_row.addWidget(self.crawl_depth_input)
-        options_row.addWidget(self.timeout_input)
-        options_row.addWidget(self.scan_profile_combo)
+        options_row.addWidget(self.timeout_input, 1)
+        options_row.addWidget(self.scan_profile_combo, 1)
         options_wrap = QWidget()
         options_wrap.setLayout(options_row)
         config_card.add(options_wrap)
@@ -104,6 +114,20 @@ class StaticScanTab(QWidget):
 
         root.addStretch()
 
+        # Every control that Reset puts back to its starting state. Each of
+        # these has a reset() method (see app/widgets.py). If you add a new
+        # input to the form later, add it to this list and Reset covers it.
+        self._form_widgets = [
+            self.target_input,
+            self.timeout_input,
+            self.scan_profile_combo,
+            self.check_headers,
+            self.check_tls,
+            self.check_components,
+            self.check_exposed_files,
+            self.file_upload,
+        ]
+
     # -----------------------------------------------------------------
     # Handlers — placeholder behaviour for now. The backend team can
     # replace _on_run_scan's body with a real call, reading the same
@@ -113,7 +137,8 @@ class StaticScanTab(QWidget):
         self._set_banner(f"Selected file: {file_name}", "success")
 
     def _on_reset(self):
-        self.target_input.set_text("")
+        for widget in self._form_widgets:
+            widget.reset()
         self._set_banner("Form reset.", "info")
 
     def _on_run_scan(self):
@@ -139,7 +164,6 @@ class StaticScanTab(QWidget):
     # What the backend team can read off this page once it's wired up:
     #
     #   self.target_input.text()            -> str, the target URL
-    #   self.crawl_depth_input.text()       -> str, crawl depth (parse to int)
     #   self.timeout_input.text()           -> str, timeout in seconds (parse to int)
     #   self.scan_profile_combo.value()     -> str, one of "Quick"/"Standard"/"Thorough"
     #   self.check_headers.isChecked()      -> bool
@@ -148,6 +172,11 @@ class StaticScanTab(QWidget):
     #   self.check_exposed_files.isChecked()-> bool
     #   self.file_upload.file_name()        -> str, e.g. "index.html" ("" if none chosen)
     #   self.file_upload.file_path()        -> str, full path on disk ("" if none chosen)
+    #
+    # Note: there is no crawl depth input on purpose. None of the static checks
+    # above follow links (headers/TLS are per-host, exposed files are a fixed
+    # path list, an uploaded file is a single page). If the backend later
+    # crawls multiple pages, add a "Max pages" input here instead.
     #
     # To hook in a real scan: replace the body of _on_run_scan with a
     # call into the scanning backend, passing the values above.

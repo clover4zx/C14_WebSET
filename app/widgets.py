@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -68,6 +69,21 @@ def section_header(text: str) -> QLabel:
     return lbl
 
 
+def make_scrollable(content: QWidget) -> QScrollArea:
+    """
+    Wrap a page's content in a scroll area. If the window is too short to
+    show everything, a scrollbar appears instead of the widgets being
+    squashed or running off the bottom of the screen. The width still
+    follows the window (setWidgetResizable), so inputs keep stretching
+    sideways as the window gets wider.
+    """
+    scroll = QScrollArea()
+    scroll.setWidgetResizable(True)
+    scroll.setFrameShape(QFrame.Shape.NoFrame)
+    scroll.setWidget(content)
+    return scroll
+
+
 # ---------------------------------------------------------------------------
 # Buttons
 # ---------------------------------------------------------------------------
@@ -105,8 +121,8 @@ class LabeledInput(QWidget):
         self.field.setPlaceholderText(placeholder)
         self.field.setMinimumHeight(34)
         self.field.setStyleSheet(
-            f"background-color: {theme.BG_DARK}; border: 1px solid {theme.BORDER}; "
-            f"border-radius: 6px; padding: 4px 10px;"
+            f"background-color: {theme.BG_DARK}; color: {theme.TEXT_PRIMARY}; "
+            f"border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 4px 10px;"
         )
 
         layout.addWidget(caption)
@@ -117,6 +133,28 @@ class LabeledInput(QWidget):
 
     def set_text(self, value: str):
         self.field.setText(value)
+
+    def reset(self):
+        """Back to empty (the placeholder text shows again)."""
+        self.field.clear()
+
+
+class _NoWheelComboBox(QComboBox):
+    """
+    A QComboBox that ignores the mouse wheel unless it has been clicked.
+    Without this, scrolling a scrollable page with the wheel while the
+    cursor happens to be over the dropdown changes its selection by accident.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+
+    def wheelEvent(self, event):
+        if self.hasFocus():
+            super().wheelEvent(event)
+        else:
+            event.ignore()  # lets the page scroll instead
 
 
 class LabeledCombo(QWidget):
@@ -130,12 +168,12 @@ class LabeledCombo(QWidget):
 
         caption = QLabel(label)
         caption.setStyleSheet(f"color: {theme.TEXT_MUTED}; font-size: 11px; font-weight: 600;")
-        self.combo = QComboBox()
+        self.combo = _NoWheelComboBox()
         self.combo.addItems(options)
         self.combo.setMinimumHeight(34)
         self.combo.setStyleSheet(
-            f"background-color: {theme.BG_DARK}; border: 1px solid {theme.BORDER}; "
-            f"border-radius: 6px; padding: 4px 10px;"
+            f"background-color: {theme.BG_DARK}; color: {theme.TEXT_PRIMARY}; "
+            f"border: 1px solid {theme.BORDER}; border-radius: 6px; padding: 4px 10px;"
         )
 
         layout.addWidget(caption)
@@ -144,13 +182,27 @@ class LabeledCombo(QWidget):
     def value(self) -> str:
         return self.combo.currentText()
 
+    def reset(self):
+        """Back to the first option in the list."""
+        self.combo.setCurrentIndex(0)
 
-def make_checkbox(label: str, checked: bool = False) -> QCheckBox:
+
+class CheckBox(QCheckBox):
+    """A QCheckBox that remembers how it started, so reset() can restore it."""
+
+    def __init__(self, label: str, checked: bool = False):
+        super().__init__(label)
+        self._default_checked = checked
+        self.setChecked(checked)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
+
+    def reset(self):
+        self.setChecked(self._default_checked)
+
+
+def make_checkbox(label: str, checked: bool = False) -> CheckBox:
     """A styled checkbox, for toggle options like 'Check HTTP Headers'."""
-    box = QCheckBox(label)
-    box.setChecked(checked)
-    box.setCursor(Qt.CursorShape.PointingHandCursor)
-    return box
+    return CheckBox(label, checked)
 
 
 class FileUploadBox(QWidget):
@@ -214,6 +266,12 @@ class FileUploadBox(QWidget):
     def file_path(self) -> str:
         """The full path on disk. Empty string if nothing chosen."""
         return self._file_path
+
+    def reset(self):
+        """Forget the chosen file and show 'No file selected' again."""
+        self._file_path = ""
+        self.name_label.setText("No file selected")
+        self.name_label.setStyleSheet(f"color: {theme.TEXT_MUTED};")
 
 
 # ---------------------------------------------------------------------------
