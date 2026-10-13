@@ -103,6 +103,17 @@ def secondary_button(text: str) -> QPushButton:
     return btn
 
 
+def make_nav_button(label: str, icon: str = "") -> QPushButton:
+    """A sidebar navigation button. Checkable, so the active page can
+    stay highlighted (styled by #NavButton:checked in theme.py)."""
+    text = f"{icon}  {label}" if icon else label
+    btn = QPushButton(text)
+    btn.setObjectName("NavButton")
+    btn.setCheckable(True)
+    btn.setCursor(Qt.CursorShape.PointingHandCursor)
+    return btn
+
+
 # ---------------------------------------------------------------------------
 # Inputs
 # ---------------------------------------------------------------------------
@@ -281,7 +292,7 @@ class Banner(QFrame):
     """Inline notification strip. kind: 'info' | 'success' | 'warning' | 'danger'"""
 
     _COLORS = {
-        "info": "#5fb0e0",
+        "info": theme.ACCENT_INFO,
         "success": theme.ACCENT,
         "warning": theme.ACCENT_WARN,
         "danger": theme.ACCENT_DANGER,
@@ -289,9 +300,11 @@ class Banner(QFrame):
 
     def __init__(self, text: str, kind: str = "info"):
         super().__init__()
-        color = self._COLORS.get(kind, "#5fb0e0")
+        color = self._COLORS.get(kind, theme.ACCENT_INFO)
+        # Qt reads 8-digit hex as #AARRGGBB, so use rgba() for transparency
         self.setStyleSheet(
-            f"background-color: {color}22; border: 1px solid {color}66; border-radius: 8px;"
+            f"background-color: {theme.rgba(color, 34)}; "
+            f"border: 1px solid {theme.rgba(color, 102)}; border-radius: 8px;"
         )
         layout = QHBoxLayout(self)
         layout.setContentsMargins(14, 10, 14, 10)
