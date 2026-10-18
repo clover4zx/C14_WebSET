@@ -1,0 +1,32 @@
+# Example WebSET scan profile.
+# Pass with: python -m dynamic.cli <url> --config scan_profile_example.yaml
+
+user_agent: "WebSET-PassiveScanner/1.0 (+authorised-testing-only)"
+timeout: 10
+
+# Domains linked to from the target that should NOT be flagged as
+# "external/untrusted" (e.g. your own CDN, analytics you approved, etc.)
+trusted_domains:
+  - fonts.googleapis.com
+  - cdnjs.cloudflare.com
+  - fonts.gstatic.com
+
+# Script tag types to skip scanning entirely (e.g. structured data blocks
+# that aren't executable JS and commonly trip up naive scanners).
+excluded_script_types:
+  - application/ld+json
+  - application/json
+
+# Your own custom detection rules, on top of WebSET's built-in checks.
+custom_signatures:
+  - name: "Internal debug flag left on"
+    pattern: "DEBUG_MODE\\s*=\\s*true"
+    severity: HIGH
+    description: "An internal debug flag appears enabled on this page."
+    recommendation: "Disable debug mode before deploying to production."
+
+  - name: "Internal hostname leaked"
+    pattern: "internal-[a-z0-9-]+\\.corp\\.local"
+    severity: MEDIUM
+    description: "An internal-only hostname is referenced in public page content."
+    recommendation: "Remove references to internal infrastructure from public-facing pages."
