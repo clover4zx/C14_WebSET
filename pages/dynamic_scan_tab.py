@@ -1,17 +1,3 @@
-"""
-pages/dynamic_scan_tab.py
-The "Dynamic" tab inside the New Scan page. Built the same way as
-static_scan_tab.py: a scrollable form made of Cards and the shared
-widgets from app/widgets.py, styled entirely by app/theme.py.
-
-Pure front-end for now — every input is exposed as a plain attribute so
-the backend team can read values off this page without touching the UI
-code (see get_config() and the notes at the bottom of this file).
-
-Nothing in here runs a real scan yet — Run Dynamic Scan validates the
-form and shows a banner confirming what would be sent to the backend.
-"""
-
 from PyQt6.QtWidgets import QHBoxLayout, QLabel, QPlainTextEdit, QVBoxLayout, QWidget
 
 from app import theme
@@ -102,8 +88,8 @@ class DynamicScanTab(QWidget):
         )
         target_card.add(self.auth_input)
 
-        # Dynamic scans send real attack payloads, so the user has to
-        # explicitly confirm they are allowed to test this target.
+        # Require explicit authorisation even for the current passive scan.
+        # The form includes planned active checks, but those are not implemented yet.
         self.check_authorized = make_checkbox(
             "I confirm I am authorised to test this target "
             "(e.g. DVWA, Juice Shop or my own test environment)"
@@ -178,7 +164,7 @@ class DynamicScanTab(QWidget):
         root.addWidget(config_card)
 
         # --- payloads ---
-        root.addWidget(section_header("Payloads"))
+        root.addWidget(section_header("Planned Payload Options (not yet implemented)"))
         payload_card = Card()
         self.payload_source_combo = LabeledCombo(
             "Payload Source", ["Built-in", "SecLists", self.CUSTOM_PAYLOAD_SOURCE]
@@ -196,7 +182,7 @@ class DynamicScanTab(QWidget):
         root.addWidget(payload_card)
 
         # --- manual payload injection ---
-        root.addWidget(section_header("Manual Payload Injection (optional)"))
+        root.addWidget(section_header("Planned Manual Payload Injection (not yet implemented)"))
         manual_card = Card()
 
         manual_row = QHBoxLayout()
@@ -222,7 +208,7 @@ class DynamicScanTab(QWidget):
         actions_row = QHBoxLayout()
         actions_row.addStretch()
         self.reset_button = secondary_button("Reset")
-        self.run_button = primary_button("Run Dynamic Scan")
+        self.run_button = primary_button("Run Website Scan (Passive)")
         self.reset_button.clicked.connect(self._on_reset)
         self.run_button.clicked.connect(self._on_run_scan)
         actions_row.addWidget(self.reset_button)
@@ -258,9 +244,7 @@ class DynamicScanTab(QWidget):
         ]
 
     # -----------------------------------------------------------------
-    # Handlers — placeholder behaviour for now. The backend team can
-    # replace _on_run_scan's body with a real call, using get_config()
-    # (or reading the attributes documented below directly).
+    # Handlers: connect the target URL to the existing passive scanner.
     # -----------------------------------------------------------------
     def _on_payload_source_changed(self, source: str):
         self.payload_file_upload.setVisible(source == self.CUSTOM_PAYLOAD_SOURCE)
@@ -280,13 +264,24 @@ class DynamicScanTab(QWidget):
             return
 
         config = self.get_config()
+        from pages.scan_worker import ScanWorker
+        self.run_button.setEnabled(False)
         self._set_banner(
-            f"Dynamic scan requested for '{config['target_url']}' "
-            f"(profile: {config['scan_profile']}, "
-            f"{len(config['checks'])} check(s), "
-            f"payloads: {config['payload_source']}).",
-            "success",
+            "Running passive website checks. Active payload injection and the other advanced options are not implemented by the current backend.",
+            "info",
         )
+        self._worker = ScanWorker("passive", config["target_url"], self)
+        self._worker.finished_with_result.connect(self._on_scan_finished)
+        self._worker.start()
+
+    def _on_scan_finished(self, result):
+        from pages.scan_results_dialog import ScanResultsDialog
+        self.run_button.setEnabled(True)
+        if result.get("ok"):
+            self._set_banner(f"Passive website scan completed: {result.get('total_findings', 0)} finding(s).", "success")
+        else:
+            self._set_banner(f"Website scan failed: {result.get('error', 'Unknown error')}", "danger")
+        ScanResultsDialog(result, self).exec()
 
     def _validate(self) -> str:
         """Returns a message describing the first problem found, or '' if the form is OK."""
@@ -367,8 +362,7 @@ class DynamicScanTab(QWidget):
         }
 
     # -----------------------------------------------------------------
-    # What the backend team can read off this page once it's wired up
-    # (or just call self.get_config() to get all of it as a dict):
+
     #
     #   self.target_input.text()               -> str, the target URL
     #   self.auth_input.text()                 -> str, cookie / auth header ("" if none)
@@ -391,7 +385,6 @@ class DynamicScanTab(QWidget):
     #   self.manual_param_input.text()         -> str, parameter/field to inject into
     #   self.manual_payload_input.text()       -> str, the manual payload (can be multi-line)
     #
-    # To hook in a real scan: replace the body of _on_run_scan with a call
-    # into the scanning backend, passing get_config(). _validate() already
-    # runs first, so the config it receives is known to be well-formed.
+    # Current backend integration uses only target_url. Other form options are
+    # preserved for future work but are not yet consumed by the passive scanner.
     # -----------------------------------------------------------------

@@ -7,7 +7,7 @@ Layout:
     [ Findings by Severity ]  [ Activity Over Time               ]
     [ Recent Scans table                                         ]
 
-All numbers come from data/dashboard_data.py (dummy data for now) —
+All numbers come from data/dashboard_data.py (dummy data for now)
 this file only handles how things LOOK, never where data comes from.
 """
 

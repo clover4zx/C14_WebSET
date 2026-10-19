@@ -72,9 +72,9 @@ class StaticScanTab(QWidget):
         config_card.add(checks_label)
 
         checks_row = QHBoxLayout()
-        self.check_headers = make_checkbox("HTTP Headers", checked=True)
-        self.check_tls = make_checkbox("TLS / SSL", checked=True)
-        self.check_components = make_checkbox("Outdated Components", checked=True)
+        self.check_headers = make_checkbox("Hardcoded Secrets", checked=True)
+        self.check_tls = make_checkbox("Risky Code Patterns", checked=True)
+        self.check_components = make_checkbox("Dependency Versions", checked=True)
         self.check_exposed_files = make_checkbox("Exposed Files", checked=True)
         checks_row.addWidget(self.check_headers)
         checks_row.addWidget(self.check_tls)
@@ -88,17 +88,17 @@ class StaticScanTab(QWidget):
         root.addWidget(config_card)
 
         # --- HTML file upload ---
-        root.addWidget(section_header("Upload Target Page (optional)"))
+        root.addWidget(section_header("Upload Source Code Archive"))
         upload_card = Card()
         self.file_upload = FileUploadBox(
-            "HTML File", file_filter="HTML Files (*.html *.htm)"
+            "Source Code ZIP", file_filter="ZIP Archives (*.zip)"
         )
         self.file_upload.file_selected.connect(self._on_file_selected)
         upload_card.add(self.file_upload)
         root.addWidget(upload_card)
 
         # --- status banner, updates when a file is picked or scan is run ---
-        self.status_banner = Banner("No file selected. No scan run yet.", "info")
+        self.status_banner = Banner("Upload a source-code ZIP to run static analysis. The scanner does not execute uploaded code.", "info")
         root.addWidget(self.status_banner)
 
         # --- actions ---
@@ -129,9 +129,7 @@ class StaticScanTab(QWidget):
         ]
 
     # -----------------------------------------------------------------
-    # Handlers — placeholder behaviour for now. The backend team can
-    # replace _on_run_scan's body with a real call, reading the same
-    # values documented below.
+    # Handlers: the source ZIP is passed to the integrated static analyzer.
     # -----------------------------------------------------------------
     def _on_file_selected(self, file_name: str):
         self._set_banner(f"Selected file: {file_name}", "success")
@@ -142,15 +140,28 @@ class StaticScanTab(QWidget):
         self._set_banner("Form reset.", "info")
 
     def _on_run_scan(self):
-        target = self.target_input.text().strip()
-        if not target and not self.file_upload.file_name():
-            self._set_banner("Enter a target URL or upload a file first.", "warning")
+        zip_path = self.file_upload.file_path()
+        if not zip_path:
+            self._set_banner("Choose a source-code ZIP file first.", "warning")
             return
-        self._set_banner(
-            f"Static scan requested for '{target or self.file_upload.file_name()}' "
-            f"(profile: {self.scan_profile_combo.value()}).",
-            "success",
-        )
+        if not zip_path.lower().endswith(".zip"):
+            self._set_banner("The static analyzer accepts .zip archives only.", "warning")
+            return
+        from pages.scan_worker import ScanWorker
+        self.run_button.setEnabled(False)
+        self._set_banner("Static scan running… uploaded code will not be executed.", "info")
+        self._worker = ScanWorker("static", zip_path, self)
+        self._worker.finished_with_result.connect(self._on_scan_finished)
+        self._worker.start()
+
+    def _on_scan_finished(self, result):
+        from pages.scan_results_dialog import ScanResultsDialog
+        self.run_button.setEnabled(True)
+        if result.get("ok"):
+            self._set_banner(f"Static scan completed: {result.get('total_findings', 0)} finding(s).", "success")
+        else:
+            self._set_banner(f"Static scan failed: {result.get('error', 'Unknown error')}", "danger")
+        ScanResultsDialog(result, self).exec()
 
     def _set_banner(self, text: str, kind: str):
         parent_layout = self.status_banner.parentWidget().layout()
@@ -170,14 +181,11 @@ class StaticScanTab(QWidget):
     #   self.check_tls.isChecked()          -> bool
     #   self.check_components.isChecked()   -> bool
     #   self.check_exposed_files.isChecked()-> bool
-    #   self.file_upload.file_name()        -> str, e.g. "index.html" ("" if none chosen)
+    #   self.file_upload.file_name()        -> str, e.g. "source.zip" ("" if none chosen)
     #   self.file_upload.file_path()        -> str, full path on disk ("" if none chosen)
     #
-    # Note: there is no crawl depth input on purpose. None of the static checks
-    # above follow links (headers/TLS are per-host, exposed files are a fixed
-    # path list, an uploaded file is a single page). If the backend later
-    # crawls multiple pages, add a "Max pages" input here instead.
+    # The current integrated static backend scans ZIP source archives; it does
+    # not use the target URL, timeout, or individual checkbox options yet.
     #
-    # To hook in a real scan: replace the body of _on_run_scan with a
-    # call into the scanning backend, passing the values above.
+    # The current implementation invokes pages.webset_core.run_static_scan().
     # -----------------------------------------------------------------

@@ -1,7 +1,6 @@
 """
 pages/new_scan_page.py
-Shown when the "New Scan" sidebar button is clicked. Just a tab
-container — the actual content for each tab lives in its own file:
+Shown when the "New Scan" sidebar button is clicked.
     - pages/static_scan_tab.py   (StaticScanTab)
     - pages/dynamic_scan_tab.py  (DynamicScanTab)
 """

@@ -1,17 +1,3 @@
-"""
-data/cases_data.py
-Where the Cases page gets its cases from.
-
-A "case" groups related findings about one target or issue, so the
-team can track it from discovery through to fixing it. Each finding
-includes its OWASP Top 10 (2021) category and a remediation step.
-
-Right now this uses DUMMY data kept in memory. Changing a case's status
-works while the app is open but resets when it restarts. When the
-SQLite database is ready, replace the bodies of these functions with
-real queries; the Cases page won't need to change.
-"""
-
 import copy
 from datetime import date
 
