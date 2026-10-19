@@ -1,38 +1,94 @@
 """
 pages/static_scan_tab.py
-The "Static" tab inside the New Scan page. Pure front-end for now —
-every input here is exposed as a plain attribute/method so the backend
-team can read values off this page without needing to touch the UI
-code at all (see the bottom of this file for exactly what's exposed).
+The "Static" tab inside the New Scan page.
 
-Nothing in here runs a real scan yet — Run Static Scan currently just
-shows a banner confirming what would be sent to the backend.
+Static scanning = analysing a website's SOURCE CODE without running it.
+Upload a .zip of source code; the static analyzer (via webset_core) reports
+hardcoded secrets, risky code patterns, and exposed sensitive files.
+
+Results are shown as a "Source Code Analysis" report, where each finding
+points to a FILE and LINE NUMBER - that's what makes static analysis distinct
+from a live (dynamic) scan.
 """
 
-from PyQt6.QtWidgets import QHBoxLayout, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QVBoxLayout,
+    QWidget,
+)
 
 from app.widgets import (
     Banner,
     Card,
     FileUploadBox,
-    LabeledCombo,
-    LabeledInput,
-    make_checkbox,
     make_scrollable,
     primary_button,
     secondary_button,
     section_header,
 )
 
+import os
+
+from pages.webset_core import run_static_scan
+from data.scan_history_data import add_scan_result
+
+
+SEVERITY_COLORS = {
+    "HIGH": "#c0392b",
+    "MEDIUM": "#e67e22",
+    "LOW": "#2980b9",
+    "INFO": "#7f8c8d",
+}
+
+
+def _severity_chip(severity: str) -> QLabel:
+    chip = QLabel(severity)
+    chip.setStyleSheet(
+        f"background:{SEVERITY_COLORS.get(severity, '#7f8c8d')};color:white;"
+        "font-weight:bold;padding:3px 0;border-radius:4px;"
+    )
+    chip.setFixedWidth(78)
+    chip.setAlignment(Qt.AlignmentFlag.AlignCenter)
+    return chip
+
+
+def _finding_card(finding: dict, location_text: str) -> QFrame:
+    frame = QFrame()
+    frame.setStyleSheet(
+        "QFrame{background:rgba(255,255,255,0.05);"
+        "border:1px solid rgba(255,255,255,0.12);border-radius:6px;}"
+        "QLabel{border:none;background:transparent;}"
+    )
+    row = QHBoxLayout(frame)
+    row.setContentsMargins(10, 8, 10, 8)
+    row.setSpacing(10)
+
+    row.addWidget(_severity_chip(finding["severity"]), 0, Qt.AlignmentFlag.AlignTop)
+
+    col = QVBoxLayout()
+    col.setSpacing(2)
+    title = QLabel(finding["category"])
+    title.setStyleSheet("font-weight:bold;")
+    loc = QLabel(location_text)
+    loc.setWordWrap(True)
+    loc.setStyleSheet("color:#9aa0b5;font-family:Consolas,'Courier New',monospace;")
+    desc = QLabel(finding.get("description", ""))
+    desc.setWordWrap(True)
+    desc.setStyleSheet("color:#c7ccda;")
+    col.addWidget(title)
+    col.addWidget(loc)
+    col.addWidget(desc)
+    row.addLayout(col, 1)
+    return frame
+
 
 class StaticScanTab(QWidget):
     def __init__(self):
         super().__init__()
 
-        # Everything in the form is built inside `content`. make_scrollable()
-        # wraps it in a scroll area: if the window is too short, a scrollbar
-        # appears instead of the form being squashed or running off-screen.
-        # Width still follows the window, so inputs stretch sideways as it grows.
         content = QWidget()
         root = QVBoxLayout(content)
         root.setContentsMargins(16, 16, 16, 16)
@@ -42,62 +98,17 @@ class StaticScanTab(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.addWidget(make_scrollable(content))
 
-        # --- target ---
-        root.addWidget(section_header("Target"))
-        target_card = Card()
-        self.target_input = LabeledInput("Target URL", "https://target.local")
-        target_card.add(self.target_input)
-        root.addWidget(target_card)
-
-        # --- example configuration options ---
-        root.addWidget(section_header("Scan Configuration"))
-        config_card = Card()
-
-        # The "1" after each widget is a stretch factor: both get an equal
-        # share of the row, and keep sharing it as the window is resized.
-        options_row = QHBoxLayout()
-        self.timeout_input = LabeledInput("Request Timeout (s)", "10")
-        self.scan_profile_combo = LabeledCombo(
-            "Scan Profile", ["Quick", "Standard", "Thorough"]
-        )
-        options_row.addWidget(self.timeout_input, 1)
-        options_row.addWidget(self.scan_profile_combo, 1)
-        options_wrap = QWidget()
-        options_wrap.setLayout(options_row)
-        config_card.add(options_wrap)
-
-        # Checkboxes for which checks to run — example options; add/remove
-        # as the real static-scan feature set gets decided.
-        checks_label = section_header("Checks to Run")
-        config_card.add(checks_label)
-
-        checks_row = QHBoxLayout()
-        self.check_headers = make_checkbox("HTTP Headers", checked=True)
-        self.check_tls = make_checkbox("TLS / SSL", checked=True)
-        self.check_components = make_checkbox("Outdated Components", checked=True)
-        self.check_exposed_files = make_checkbox("Exposed Files", checked=True)
-        checks_row.addWidget(self.check_headers)
-        checks_row.addWidget(self.check_tls)
-        checks_row.addWidget(self.check_components)
-        checks_row.addWidget(self.check_exposed_files)
-        checks_row.addStretch()
-        checks_wrap = QWidget()
-        checks_wrap.setLayout(checks_row)
-        config_card.add(checks_wrap)
-
-        root.addWidget(config_card)
-
-        # --- HTML file upload ---
-        root.addWidget(section_header("Upload Target Page (optional)"))
+        # --- source code upload ---
+        root.addWidget(section_header("Upload Source Code (.zip)"))
         upload_card = Card()
         self.file_upload = FileUploadBox(
-            "HTML File", file_filter="HTML Files (*.html *.htm)"
+            "Source ZIP", file_filter="Zip archives (*.zip)"
         )
         self.file_upload.file_selected.connect(self._on_file_selected)
         upload_card.add(self.file_upload)
         root.addWidget(upload_card)
 
-        # --- status banner, updates when a file is picked or scan is run ---
+        # --- status banner ---
         self.status_banner = Banner("No file selected. No scan run yet.", "info")
         root.addWidget(self.status_banner)
 
@@ -112,45 +123,88 @@ class StaticScanTab(QWidget):
         actions_row.addWidget(self.run_button)
         root.addLayout(actions_row)
 
+        # --- results report (filled in after a scan) ---
+        self.results_host = QWidget()
+        self.results_box = QVBoxLayout(self.results_host)
+        self.results_box.setContentsMargins(0, 0, 0, 0)
+        self.results_box.setSpacing(8)
+        root.addWidget(self.results_host)
+
         root.addStretch()
 
-        # Every control that Reset puts back to its starting state. Each of
-        # these has a reset() method (see app/widgets.py). If you add a new
-        # input to the form later, add it to this list and Reset covers it.
-        self._form_widgets = [
-            self.target_input,
-            self.timeout_input,
-            self.scan_profile_combo,
-            self.check_headers,
-            self.check_tls,
-            self.check_components,
-            self.check_exposed_files,
-            self.file_upload,
-        ]
+        self.last_result = None
 
-    # -----------------------------------------------------------------
-    # Handlers — placeholder behaviour for now. The backend team can
-    # replace _on_run_scan's body with a real call, reading the same
-    # values documented below.
     # -----------------------------------------------------------------
     def _on_file_selected(self, file_name: str):
         self._set_banner(f"Selected file: {file_name}", "success")
 
     def _on_reset(self):
-        for widget in self._form_widgets:
-            widget.reset()
+        self.file_upload.reset()
+        self._clear_results()
         self._set_banner("Form reset.", "info")
 
     def _on_run_scan(self):
-        target = self.target_input.text().strip()
-        if not target and not self.file_upload.file_name():
-            self._set_banner("Enter a target URL or upload a file first.", "warning")
+        zip_path = self.file_upload.file_path()
+        if not zip_path:
+            self._set_banner("Upload a .zip of source code first.", "warning")
             return
-        self._set_banner(
-            f"Static scan requested for '{target or self.file_upload.file_name()}' "
-            f"(profile: {self.scan_profile_combo.value()}).",
-            "success",
+
+        self._set_banner("Analysing source code ...", "info")
+
+        result = run_static_scan(zip_path)
+        self.last_result = result
+
+        # Save this scan so it appears in Scan History.
+        add_scan_result(result, "Static", os.path.basename(zip_path), profile="Source ZIP")
+
+        if result["ok"]:
+            s = result["summary"]
+            self._set_banner(
+                f"Analysis complete - {result['total_findings']} issues found "
+                f"(HIGH {s['HIGH']}, MEDIUM {s['MEDIUM']}, "
+                f"LOW {s['LOW']}, INFO {s['INFO']}).",
+                "success",
+            )
+            self._render_results(result)
+        else:
+            self._clear_results()
+            self._set_banner(f"Scan failed: {result['error']}", "warning")
+
+    # -----------------------------------------------------------------
+    # Results rendering
+    # -----------------------------------------------------------------
+    def _clear_results(self):
+        while self.results_box.count():
+            item = self.results_box.takeAt(0)
+            widget = item.widget()
+            if widget is not None:
+                widget.deleteLater()
+
+    def _render_results(self, result: dict):
+        self._clear_results()
+
+        header = QLabel("STATIC  •  Source Code Analysis")
+        header.setStyleSheet(
+            "background:#6c5ce7;color:white;font-weight:bold;"
+            "padding:7px 12px;border-radius:5px;"
         )
+        self.results_box.addWidget(header)
+
+        meta = result.get("meta", {})
+        tech = ", ".join(meta.get("tech_stack", [])) or "unknown"
+        sub = QLabel(
+            f"Scanned file: {meta.get('zip_file', result['target'])}   •   "
+            f"Tech stack: {tech}   •   source code read, never executed"
+        )
+        sub.setWordWrap(True)
+        sub.setStyleSheet("color:#9aa0b5;")
+        self.results_box.addWidget(sub)
+
+        for f in result["findings"]:
+            loc = f["location"]
+            if f.get("line"):
+                loc += f"  (line {f['line']})"
+            self.results_box.addWidget(_finding_card(f, "\U0001F4C4 " + loc))
 
     def _set_banner(self, text: str, kind: str):
         parent_layout = self.status_banner.parentWidget().layout()
@@ -159,25 +213,3 @@ class StaticScanTab(QWidget):
         new_banner = Banner(text, kind)
         parent_layout.insertWidget(idx, new_banner)
         self.status_banner = new_banner
-
-    # -----------------------------------------------------------------
-    # What the backend team can read off this page once it's wired up:
-    #
-    #   self.target_input.text()            -> str, the target URL
-    #   self.timeout_input.text()           -> str, timeout in seconds (parse to int)
-    #   self.scan_profile_combo.value()     -> str, one of "Quick"/"Standard"/"Thorough"
-    #   self.check_headers.isChecked()      -> bool
-    #   self.check_tls.isChecked()          -> bool
-    #   self.check_components.isChecked()   -> bool
-    #   self.check_exposed_files.isChecked()-> bool
-    #   self.file_upload.file_name()        -> str, e.g. "index.html" ("" if none chosen)
-    #   self.file_upload.file_path()        -> str, full path on disk ("" if none chosen)
-    #
-    # Note: there is no crawl depth input on purpose. None of the static checks
-    # above follow links (headers/TLS are per-host, exposed files are a fixed
-    # path list, an uploaded file is a single page). If the backend later
-    # crawls multiple pages, add a "Max pages" input here instead.
-    #
-    # To hook in a real scan: replace the body of _on_run_scan with a
-    # call into the scanning backend, passing the values above.
-    # -----------------------------------------------------------------
