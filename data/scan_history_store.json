@@ -1,0 +1,109 @@
+[
+  {
+    "id": "WS-013",
+    "target": "sample_vulnerable_site.zip",
+    "date": "19/10/2026 11:58 pm",
+    "scan_type": "Static",
+    "profile": "Source ZIP",
+    "status": "Completed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 5,
+      "Medium": 3,
+      "Low": 1
+    }
+  },
+  {
+    "id": "WS-014",
+    "target": "http://127.0.0.1:8000/",
+    "date": "19/10/2026 11:58 pm",
+    "scan_type": "Dynamic",
+    "profile": "Passive",
+    "status": "Failed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 0,
+      "Low": 0
+    },
+    "error": "Passive scan failed: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: / (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+  },
+  {
+    "id": "WS-015",
+    "target": "http://127.0.0.1:8000/",
+    "date": "19/10/2026 11:59 pm",
+    "scan_type": "Dynamic",
+    "profile": "Passive",
+    "status": "Failed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 0,
+      "Low": 0
+    },
+    "error": "Passive scan failed: HTTPConnectionPool(host='127.0.0.1', port=8000): Max retries exceeded with url: / (Caused by NewConnectionError(\"HTTPConnection(host='127.0.0.1', port=8000): Failed to establish a new connection: [WinError 10061] No connection could be made because the target machine actively refused it\"))"
+  },
+  {
+    "id": "WS-016",
+    "target": "http://zero.webappsecurity.com/",
+    "date": "19/10/2026 11:59 pm",
+    "scan_type": "Dynamic",
+    "profile": "Passive",
+    "status": "Completed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 2,
+      "Low": 2
+    }
+  },
+  {
+    "id": "WS-017",
+    "target": "sample_vulnerable_site.zip",
+    "date": "20/10/2026 12:10 am",
+    "scan_type": "Static",
+    "profile": "Source ZIP",
+    "status": "Completed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 5,
+      "Medium": 3,
+      "Low": 1
+    }
+  },
+  {
+    "id": "WS-018",
+    "target": "http://zero.webappsecurity.com/",
+    "date": "20/10/2026 2:12 pm",
+    "scan_type": "Dynamic",
+    "profile": "Passive",
+    "status": "Completed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 2,
+      "Low": 2
+    }
+  },
+  {
+    "id": "WS-019",
+    "target": "http://zero.webappsecurity.com/",
+    "date": "20/10/2026 2:12 pm",
+    "scan_type": "Dynamic",
+    "profile": "Passive",
+    "status": "Completed",
+    "duration": "",
+    "severity": {
+      "Critical": 0,
+      "High": 0,
+      "Medium": 2,
+      "Low": 2
+    }
+  }
+]

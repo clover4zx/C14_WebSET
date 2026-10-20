@@ -1,0 +1,25 @@
+# WebSET - Python dependencies
+# Install everything with:  pip install -r requirements.txt
+# (Python 3.10 or newer is required.)
+
+# --- Dynamic (passive) scanner: fetch and parse live pages ---
+requests
+beautifulsoup4
+lxml
+tldextract
+
+# --- Scan profiles / config (YAML) ---
+pyyaml
+
+# --- Outdated-library version comparison ---
+packaging
+
+# --- Console output and command-line interface ---
+rich
+click
+
+# --- Desktop GUI ---
+PyQt6
+
+# --- PDF report generation ---
+fpdf2
