@@ -17,10 +17,11 @@ a banner. The backend team can call get_config() / selected_findings()
 to get everything they need (see the bottom of this file).
 """
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QColor
+from PyQt6.QtCore import Qt, QUrl
+from PyQt6.QtGui import QColor, QDesktopServices
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QFileDialog,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -46,6 +47,7 @@ from app.widgets import (
 )
 from data.cases_data import SEVERITY_ORDER, get_cases
 from data.scan_history_data import get_scan_history
+from pages.report_generator import generate_report
 
 FORMAT_OPTIONS = ["PDF", "HTML", "Markdown", "JSON", "CSV"]
 ALL_SCANS = "All scans"
@@ -347,11 +349,39 @@ class ReportsPage(QWidget):
             return
 
         config = self.get_config()
+
+        # Work out a sensible file name and extension from the chosen format.
+        ext_map = {"PDF": "pdf", "HTML": "html", "Markdown": "md", "JSON": "json", "CSV": "csv"}
+        ext = ext_map.get(config["format"], "pdf")
+        safe_title = "".join(c if c.isalnum() or c in " -_" else "_" for c in config["title"]).strip()
+        default_name = f"{safe_title or 'report'}.{ext}"
+
+        # Ask the user where to save it.
+        path, _ = QFileDialog.getSaveFileName(
+            self, "Save Report", default_name, f"{config['format']} file (*.{ext})"
+        )
+        if not path:
+            self._set_banner("Report cancelled.", "info")
+            return
+        if not path.lower().endswith("." + ext):
+            path += "." + ext
+
+        # Build the actual file.
+        try:
+            generate_report(config, path)
+        except Exception as exc:
+            self._set_banner(f"Could not generate report: {exc}", "warning")
+            return
+
         self._set_banner(
-            f"Report '{config['title']}' requested as {config['format']} "
-            f"({len(config['findings'])} finding(s), scope: {config['scope']}).",
+            f"Report saved: {path}  ({len(config['findings'])} finding(s)).",
             "success",
         )
+        # Open it so the user sees it right away.
+        try:
+            QDesktopServices.openUrl(QUrl.fromLocalFile(path))
+        except Exception:
+            pass
 
     def _validate(self) -> str:
         """Returns a message describing the first problem found, or '' if the form is OK."""
