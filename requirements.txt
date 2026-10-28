@@ -2,11 +2,16 @@
 # Install everything with:  pip install -r requirements.txt
 # (Python 3.10 or newer is required.)
 
-# --- Dynamic (passive) scanner: fetch and parse live pages ---
+# --- Passive scanner: fetch and parse live pages ---
 requests
 beautifulsoup4
 lxml
 tldextract
+
+# --- Active scanner: browser-driven payload testing + verification ---
+# Also requires a browser + matching driver on the system, e.g. on Kali:
+#   sudo apt install chromium chromium-driver
+selenium>=4.6
 
 # --- Scan profiles / config (YAML) ---
 pyyaml

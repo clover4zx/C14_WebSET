@@ -47,7 +47,7 @@ from app.widgets import (
 )
 from data.cases_data import SEVERITY_ORDER, get_cases
 from data.scan_history_data import get_scan_history
-from pages.report_generator import generate_report
+from reporting.report_generator import generate_report
 
 FORMAT_OPTIONS = ["PDF", "HTML", "Markdown", "JSON", "CSV"]
 ALL_SCANS = "All scans"
