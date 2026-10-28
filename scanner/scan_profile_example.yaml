@@ -1,0 +1,14 @@
+# Example WebSET scan profile. Used by tools/demo_passive.py
+user_agent: "WebSET-PassiveScanner/1.0 (+authorised-testing-only)"
+timeout: 10
+trusted_domains:
+  - fonts.googleapis.com
+  - cdnjs.cloudflare.com
+excluded_script_types:
+  - application/ld+json
+custom_signatures:
+  - name: "Internal debug flag"
+    pattern: "DEBUG_MODE\\s*=\\s*true"
+    severity: HIGH
+    description: "Internal debug flag left enabled in shipped page."
+    recommendation: "Disable debug mode before deployment."
