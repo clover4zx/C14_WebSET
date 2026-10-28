@@ -14,9 +14,21 @@ response text) is what keeps false positives low:
                        executed   -> HIGH   "Cross-Site Scripting (confirmed)"
                        injected   -> MEDIUM "HTML injection (execution not observed)"
                        reflected but safely encoded -> NOT reported
-  * SQL injection - a lone quote character is submitted; a finding is only
-                     raised if a database error signature appears that was
-                     NOT already on the page before the probe (baseline diff).
+  * SQL injection (error-based) - a lone quote character is submitted; a
+                     finding is only raised if a database error signature
+                     appears that was NOT already on the page before the
+                     probe (baseline diff).
+  * SQL injection (boolean-based / auth bypass) - on login-style forms (a
+                     password field present), an always-true condition
+                     (e.g. ' OR '1'='1) and an always-false condition with
+                     the same syntax (e.g. ' AND '1'='2) are submitted into
+                     the username/email field. If the two conditions lead
+                     to a different outcome (different resulting URL, or a
+                     markedly different page), that's the classic signature
+                     of a boolean-based SQLi / authentication bypass - this
+                     catches cases (like the classic Juice Shop login
+                     bypass) where no database error is ever shown, so the
+                     error-based check above would miss it.
 
 Findings use the same shape as the passive and static scanners:
     severity, category, location, line, snippet, description, recommendation
@@ -110,6 +122,15 @@ XSS_PAYLOADS: List[Tuple[str, str]] = [
 
 SQLI_PROBES: List[str] = ["'", '"']
 
+# Boolean-based pairs: (always-true, always-false) using matching syntax, so
+# a differing outcome between the two is attributable to the TRUE/FALSE
+# condition rather than to the payload shape. Used for the auth-bypass check
+# below, not the per-field error-based loop.
+BOOLEAN_SQLI_PAYLOADS: List[Tuple[str, str]] = [
+    ("' OR '1'='1", "' AND '1'='2"),
+    ("' OR 1=1-- -", "' AND 1=2-- -"),
+]
+
 SQL_ERROR_SIGNATURES: List[Tuple[str, "re.Pattern"]] = [
     ("SQLite", re.compile(r"SQLITE_ERROR|sqlite3?\.OperationalError|SQLite3::|unrecognized token", re.I)),
     ("MySQL/MariaDB", re.compile(
@@ -131,6 +152,11 @@ OVERLAY_SELECTORS = [  # best-effort: banners that block clicks (e.g. Juice Shop
     "a[aria-label='dismiss cookie message']",
     ".cc-dismiss",
 ]
+
+# Boolean-diff thresholds. A large difference in resulting page size between
+# the TRUE and FALSE submissions (on an otherwise identical request) is a
+# secondary signal, in case the URL does not change but the page content does.
+BOOLEAN_LENGTH_DIFF_THRESHOLD = 200
 
 
 # --------------------------------------------------------------------------- #
@@ -483,6 +509,94 @@ class ActiveScanner:
                 self.stats["payloads_sent"] += 1
                 self._evaluate(kind, payload, token, location, baseline)
                 time.sleep(self.delay)
+
+        # Boolean-based / authentication-bypass check: only meaningful on
+        # login-style forms (a password field present), and only tested on
+        # the non-password fields (typically username/email), since that is
+        # the field an auth-bypass payload targets.
+        has_password = bool(forms[form_index].find_elements(By.CSS_SELECTOR, "input[type=password]"))
+        if has_password:
+            for field_index, label in enumerate(labels):
+                if self._stopped():
+                    return
+                self._test_boolean_sqli_field(page_url, form_index, field_index, label)
+
+    # ---- boolean-based SQLi (authentication bypass) --------------------
+
+    def _submit_and_snapshot(self, page_url: str, form_index: int, field_index: int,
+                              payload: str) -> Optional[Dict]:
+        """Load the page fresh, submit `payload` into one field, and record
+        where/what we ended up with. Returns None if anything goes wrong
+        (page changed, element gone, etc.) so the caller can just skip it."""
+        try:
+            if not self._load(page_url):
+                return None
+            forms = self.driver.find_elements(By.TAG_NAME, "form")
+            if form_index >= len(forms):
+                return None
+            form = forms[form_index]
+            self._fill_form(form, field_index, payload)
+            self._submit_form(form)
+            return {"url": self.driver.current_url, "source": self._safe_source()}
+        except (StaleElementReferenceException, IndexError, WebDriverException):
+            return None
+
+    def _test_boolean_sqli_field(self, page_url: str, form_index: int, field_index: int,
+                                  label: str) -> None:
+        location = f"{page_url} -> form #{form_index + 1}, field '{label}' (boolean-based SQLi)"
+        for true_payload, false_payload in BOOLEAN_SQLI_PAYLOADS:
+            if self._stopped():
+                return
+            true_state = self._submit_and_snapshot(page_url, form_index, field_index, true_payload)
+            if true_state is None:
+                continue
+            false_state = self._submit_and_snapshot(page_url, form_index, field_index, false_payload)
+            if false_state is None:
+                continue
+            # count both submissions against the budget, since _submit_and_snapshot
+            # doesn't go through the shared _evaluate() path that normally does this.
+            self.stats["payloads_sent"] += 2
+            self._evaluate_boolean_sqli(true_payload, false_payload, true_state, false_state, location)
+            time.sleep(self.delay)
+
+    def _evaluate_boolean_sqli(self, true_payload: str, false_payload: str,
+                                true_state: Dict, false_state: Dict, location: str) -> None:
+        # Strongest signal: the TRUE and FALSE conditions land on different
+        # pages/URLs (e.g. TRUE logs in and redirects away from /login,
+        # FALSE stays on the login page). That's the classic auth-bypass shape.
+        if true_state["url"] != false_state["url"]:
+            self._add(
+                "HIGH", "SQL injection (boolean-based, authentication bypass suspected)", location,
+                f"true: {true_payload!r} -> {true_state['url']}  |  "
+                f"false: {false_payload!r} -> {false_state['url']}",
+                "Submitting an always-true condition produced a different outcome "
+                "(a different resulting page/URL) than an always-false condition using "
+                "the same syntax. This is the classic signature of a boolean-based SQL "
+                "injection, and on a login form it typically means the query can be "
+                "manipulated to bypass authentication without needing valid credentials.",
+                "Use parameterised queries / prepared statements for all authentication "
+                "and data-access logic; never build SQL by concatenating user input. "
+                "Confirm manually, since this check infers the bypass from navigation "
+                "behaviour rather than reading the database layer directly.",
+            )
+            return
+
+        # Weaker secondary signal: same URL, but a large difference in the
+        # returned content, which can also indicate boolean-based injection
+        # (e.g. a results page that changes size depending on the condition).
+        len_diff = abs(len(true_state["source"]) - len(false_state["source"]))
+        if len_diff > BOOLEAN_LENGTH_DIFF_THRESHOLD:
+            self._add(
+                "MEDIUM", "Possible SQL injection (boolean-based, response size differs)", location,
+                f"true: {true_payload!r} ({len(true_state['source'])} chars)  |  "
+                f"false: {false_payload!r} ({len(false_state['source'])} chars)",
+                "An always-true and an always-false condition, submitted with the same "
+                "syntax, produced responses of noticeably different size on the same "
+                "page. This can indicate boolean-based SQL injection, though it may also "
+                "be caused by unrelated application state - verify manually.",
+                "Use parameterised queries / prepared statements, and confirm this "
+                "finding manually (e.g. with Burp or ZAP) before treating it as certain.",
+            )
 
     # ---- URL parameters ------------------------------------------------
 
