@@ -152,6 +152,7 @@ class PassiveScanner:
         self._scan_links(soup, url, target_domain)
         self._scan_forms(soup, url)
         self._scan_custom_signatures(response.text)
+        self._scan_headers(response, url)
 
         return self._build_report(url, response)
 
@@ -166,6 +167,94 @@ class PassiveScanner:
         )
         response.raise_for_status()
         return response
+
+    # ------------------------------------------------------------------ #
+    # HTTP response header checks
+    # ------------------------------------------------------------------ #
+
+    def _scan_headers(self, response: requests.Response, url: str) -> None:
+        h = response.headers  # case-insensitive mapping
+        is_https = url.lower().startswith("https://")
+        csp = h.get("Content-Security-Policy", "")
+
+        def add(severity, category, snippet, description, recommendation):
+            self.findings.append(Finding(
+                severity=severity,
+                category=category,
+                location="HTTP response headers",
+                snippet=snippet,
+                description=description,
+                recommendation=recommendation,
+            ))
+
+        if not csp:
+            add("MEDIUM", "Missing Content-Security-Policy",
+                "(header absent)",
+                "No Content-Security-Policy header is set, so the browser "
+                "has no policy limiting where scripts and other content can "
+                "load from. This removes a key layer of defence against XSS.",
+                "Define a Content-Security-Policy that restricts script "
+                "sources (start with default-src 'self').")
+
+        if is_https and not h.get("Strict-Transport-Security"):
+            add("MEDIUM", "Missing Strict-Transport-Security",
+                "(header absent)",
+                "The site is served over HTTPS but does not send an HSTS "
+                "header, so browsers may still allow downgrade to HTTP.",
+                "Send Strict-Transport-Security with a long max-age "
+                "(e.g. max-age=31536000; includeSubDomains).")
+
+        if not h.get("X-Frame-Options") and "frame-ancestors" not in csp.lower():
+            add("MEDIUM", "Missing Clickjacking Protection",
+                "(X-Frame-Options and CSP frame-ancestors absent)",
+                "Neither X-Frame-Options nor a CSP frame-ancestors "
+                "directive is set, so the page can be framed by other sites "
+                "(clickjacking).",
+                "Send X-Frame-Options: DENY (or SAMEORIGIN), or use CSP "
+                "frame-ancestors.")
+
+        xcto = h.get("X-Content-Type-Options", "")
+        if xcto.lower() != "nosniff":
+            add("LOW", "Missing X-Content-Type-Options",
+                f"X-Content-Type-Options: {xcto}" if xcto else "(header absent)",
+                "Without 'nosniff', browsers may MIME-sniff responses and "
+                "treat non-script content as executable.",
+                "Send X-Content-Type-Options: nosniff.")
+
+        acao = h.get("Access-Control-Allow-Origin", "")
+        if acao.strip() == "*":
+            add("MEDIUM", "Permissive CORS Policy",
+                "Access-Control-Allow-Origin: *",
+                "The server allows any origin to read its responses "
+                "cross-origin. This is risky if any endpoint returns "
+                "sensitive data.",
+                "Restrict Access-Control-Allow-Origin to specific trusted "
+                "origins.")
+
+        if h.get("Feature-Policy"):
+            add("LOW", "Deprecated Feature-Policy Header",
+                f"Feature-Policy: {h.get('Feature-Policy')}"[:160],
+                "Feature-Policy has been replaced by Permissions-Policy and "
+                "is ignored by current browsers.",
+                "Migrate to the Permissions-Policy header.")
+
+        if not h.get("Referrer-Policy") and "referrer" not in csp.lower():
+            add("INFO", "Missing Referrer-Policy",
+                "(header absent)",
+                "No Referrer-Policy is set, so full URLs may be sent to "
+                "other sites in the Referer header.",
+                "Send Referrer-Policy: strict-origin-when-cross-origin "
+                "(or stricter).")
+
+        for name in ("Server", "X-Powered-By"):
+            value = h.get(name, "")
+            # only flag if it carries a version number
+            if value and re.search(r"\d+\.\d+", value):
+                add("LOW", f"Version Disclosure via {name} Header",
+                    f"{name}: {value}"[:160],
+                    "The response reveals software and version information "
+                    "that helps attackers target known vulnerabilities.",
+                    f"Remove or genericise the {name} header.")
 
     # ------------------------------------------------------------------ #
     # Script analysis: secrets, dangerous JS patterns, library versions
