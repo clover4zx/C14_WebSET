@@ -15,22 +15,23 @@ Both underlying scanners already return the SAME finding shape:
     2. Catches errors so a bad URL or bad ZIP never crashes the GUI.
     3. Returns one consistent "envelope" the frontend can always trust.
 
-This version expects your backend files to sit at the top level of the
-project (loose, next to main.py), i.e.:
+Backend files live in the scanner/ package, next to this file:
 
     C14_WebSET/
-    |-- static_zip_analyzer.py     <- static scanner
-    |-- passive_scanner.py         <- passive scanner
-    |-- scan_profile.py
-    |-- vulnerable_versions.py
-    |-- webset_core.py             <- THIS FILE
+    |-- scanner/
+    |     |-- static_zip_analyzer.py   <- static scanner
+    |     |-- passive_scanner.py       <- passive scanner
+    |     |-- active_scanner.py        <- active (Selenium) scanner
+    |     |-- scan_profile.py
+    |     |-- vulnerable_versions.py
+    |     |-- webset_core.py           <- THIS FILE
     |-- main.py
 
 Usage from the frontend:
 
-    import webset_core
+    from scanner.webset_core import run_passive_scan
 
-    result = webset_core.run_passive_scan("http://127.0.0.1:8000/")
+    result = run_passive_scan("http://127.0.0.1:8000/")
     if result["ok"]:
         for f in result["findings"]:
             print(f["severity"], f["category"], f["location"])
@@ -40,20 +41,30 @@ Usage from the frontend:
 
 from __future__ import annotations
 
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
-# Import the two scanners. This try/except is the same trick your other
-# files use: it works both when this file is run directly
-# (python pages/webset_core.py) AND when the PyQt app imports it as part of
-# the `pages` package.
+# Import the scanners. This try/except is the same trick your other files
+# use: it works both when this file is run directly
+# (python scanner/webset_core.py) AND when the GUI imports it as part of the
+# `scanner` package.
 try:
     from .static_zip_analyzer import StaticZipAnalyzer, ZipSafetyError
     from .passive_scanner import PassiveScanner
     from .scan_profile import ScanProfile
+    from .active_scanner import (
+        ActiveScanError,
+        ActiveScanner,
+        SeleniumNotInstalledError,
+    )
 except ImportError:
-    from static_zip_analyzer import StaticZipAnalyzer, ZipSafetyError
-    from passive_scanner import PassiveScanner
-    from scan_profile import ScanProfile
+    from scanner.static_zip_analyzer import StaticZipAnalyzer, ZipSafetyError
+    from scanner.passive_scanner import PassiveScanner
+    from scanner.scan_profile import ScanProfile
+    from scanner.active_scanner import (
+        ActiveScanError,
+        ActiveScanner,
+        SeleniumNotInstalledError,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -149,6 +160,53 @@ def run_passive_scan(url: str, profile_path: Optional[str] = None,
 
 
 # --------------------------------------------------------------------------- #
+# Active scan: Selenium-driven payload testing + browser-verified results.
+# --------------------------------------------------------------------------- #
+
+def run_active_scan(
+    url: str,
+    timeout: Optional[int] = None,
+    headless: bool = True,
+    allow_external: bool = False,
+    progress: Optional[Callable[[str], None]] = None,
+    should_stop: Optional[Callable[[], bool]] = None,
+) -> Dict:
+    """
+    Run the active scanner against a live URL: a headless browser submits
+    test payloads into forms and URL parameters, then checks the live DOM
+    / response to confirm whether each one took effect.
+
+    url:            the page to scan (only scan DVWA / Juice Shop / your
+                    own authorised test sites).
+    timeout:        page-load / script timeout in seconds.
+    headless:       set False to watch the browser while it works.
+    allow_external: set True to allow non-local targets (off by default -
+                    active testing sends real payloads).
+    progress:       optional callback(str) for live status updates (used by
+                    the GUI to update its status banner from a worker thread).
+    should_stop:    optional callback() -> bool; return True to cancel.
+    Returns the shared envelope dict.
+    """
+    try:
+        scanner = ActiveScanner(
+            timeout=timeout or 10,
+            headless=headless,
+            allow_external=allow_external,
+            progress=progress,
+            should_stop=should_stop,
+        )
+        report = scanner.scan(url)
+        return _ok_envelope(report, scan_type="active")
+    except SeleniumNotInstalledError as exc:
+        return _error_envelope(str(exc), "active", url)
+    except ActiveScanError as exc:
+        # Covers disallowed targets and browser start-up failures.
+        return _error_envelope(str(exc), "active", url)
+    except Exception as exc:
+        return _error_envelope(f"Active scan failed: {exc}", "active", url)
+
+
+# --------------------------------------------------------------------------- #
 # Combined scan: run both, if you have both a ZIP and a live URL for a target.
 # --------------------------------------------------------------------------- #
 
@@ -216,7 +274,7 @@ if __name__ == "__main__":
     import json
 
     print("Running a passive scan against the built-in demo page...")
-    print("(start it first in another terminal with:  python -m dynamic.demo_passive --serve )\n")
+    print("(start it first in another terminal with:  python -m tools.demo_passive --serve )\n")
 
     result = run_passive_scan("http://127.0.0.1:8000/")
     if result["ok"]:

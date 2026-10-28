@@ -24,7 +24,7 @@ with the target beyond a normal GET request. Active/offensive testing
 scoped to authorised test environments (DVWA / OWASP Juice Shop).
 
 Usage:
-    from dynamic import PassiveScanner, ScanProfile
+    from scanner import PassiveScanner, ScanProfile
 
     profile = ScanProfile.load("scan_profile_example.yaml")   # or ScanProfile() for defaults
     scanner = PassiveScanner(profile)
@@ -49,8 +49,8 @@ try:
     from .scan_profile import ScanProfile
     from .vulnerable_versions import check_version
 except ImportError:
-    from scan_profile import ScanProfile
-    from vulnerable_versions import check_version
+    from scanner.scan_profile import ScanProfile
+    from scanner.vulnerable_versions import check_version
 
 # Use tldextract in fully offline mode (bundled public-suffix-list snapshot
 # only, no live network fetch). A scanner's core detection logic should not

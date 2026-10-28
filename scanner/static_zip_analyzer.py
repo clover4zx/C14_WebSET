@@ -18,7 +18,7 @@ zip-slip (path traversal) and zip-bomb (decompression bomb) attacks, since
 this tool will often be fed untrusted uploads.
 
 Usage:
-    from static_zip_analyzer import StaticZipAnalyzer
+    from scanner.static_zip_analyzer import StaticZipAnalyzer
 
     analyzer = StaticZipAnalyzer("uploaded_site.zip")
     report = analyzer.analyze()

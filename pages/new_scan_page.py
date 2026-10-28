@@ -2,15 +2,15 @@
 pages/new_scan_page.py
 Shown when the "New Scan" sidebar button is clicked. Just a tab
 container — the actual content for each tab lives in its own file:
-    - pages/static_scan_tab.py   (StaticScanTab)
-    - pages/dynamic_scan_tab.py  (DynamicScanTab)
+    - pages/tabs/static_scan_tab.py   (StaticScanTab)
+    - pages/tabs/dynamic_scan_tab.py  (DynamicScanTab)
 """
 
 from PyQt6.QtWidgets import QTabWidget, QVBoxLayout, QWidget
 
 from app.widgets import page_header
-from pages.dynamic_scan_tab import DynamicScanTab
-from pages.static_scan_tab import StaticScanTab
+from pages.tabs.dynamic_scan_tab import DynamicScanTab
+from pages.tabs.static_scan_tab import StaticScanTab
 
 
 class NewScanPage(QWidget):

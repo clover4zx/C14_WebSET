@@ -11,12 +11,12 @@ scans it with PassiveScanner, the same way you'd point it at DVWA or
 Juice Shop.
 
 Run with (from the repo root):
-    python -m dynamic.demo_passive
+    python -m tools.demo_passive
 
 Or just right-click this file in PyCharm and choose Run.
 
 To keep the fake vulnerable site running so you can scan it from the GUI:
-    python -m dynamic.demo_passive --serve
+    python -m tools.demo_passive --serve
 Then scan http://127.0.0.1:8000/ and press Ctrl+C in the terminal to stop it.
 """
 
@@ -28,15 +28,16 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 try:
-    from .passive_scanner import PassiveScanner
-    from .scan_profile import ScanProfile
-    from .console_report import print_report
-except ImportError:
-    from passive_scanner import PassiveScanner
-    from scan_profile import ScanProfile
-    from console_report import print_report
+    from scanner.passive_scanner import PassiveScanner
+    from scanner.scan_profile import ScanProfile
+    from reporting.console_report import print_report
+except ImportError:  # run directly from tools/: add the project root to sys.path
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    from scanner.passive_scanner import PassiveScanner
+    from scanner.scan_profile import ScanProfile
+    from reporting.console_report import print_report
 
-PROFILE_PATH = Path(__file__).parent / "scan_profile_example.yaml"
+PROFILE_PATH = Path(__file__).resolve().parent.parent / "scanner" / "scan_profile_example.yaml"
 
 VULNERABLE_PAGE = """
 <!DOCTYPE html>
