@@ -69,6 +69,7 @@ class ReportsPage(QWidget):
         super().__init__()
 
         self._cases = []        # everything from the data layer
+        self._scans = []        # completed scans (real ones carry their own findings)
         self._scope_ids = []    # scan id for each scope dropdown entry (None = all scans)
         self._findings = []     # findings left after the scope filters, most severe first
 
@@ -271,6 +272,7 @@ class ReportsPage(QWidget):
         # Only completed scans can have findings, so only those are offered.
         previous = self._selected_scan_id()
         scans = [scan for scan in get_scan_history() if scan["status"] == "Completed"]
+        self._scans = scans
         self._scope_ids = [None] + [scan["id"] for scan in scans]
         labels = [ALL_SCANS] + [f"{scan['id']} – {scan['target']}" for scan in scans]
 
@@ -314,6 +316,23 @@ class ReportsPage(QWidget):
                         "case_status": case["status"],
                         "target": case["target"],
                     })
+
+        # Real scans keep their own findings (the sample cases above only cover
+        # the dummy scans). Older real scans saved before this existed have
+        # none, so they stay empty until they are run again.
+        for scan in self._scans:
+            if scan_id and scan["id"] != scan_id:
+                continue
+            for finding in scan.get("finding_details", []):
+                if SEVERITY_ORDER.index(finding["severity"]) <= min_rank:
+                    findings.append({
+                        **finding,
+                        "case_id": scan["id"],
+                        "case_title": f"Scan {scan['id']}",
+                        "case_status": "Scan result",
+                        "target": scan["target"],
+                    })
+
         findings.sort(key=lambda f: SEVERITY_ORDER.index(f["severity"]))  # stable sort
         return findings
 
@@ -436,27 +455,3 @@ class ReportsPage(QWidget):
             "sections": self.selected_sections(),
             "findings": self.selected_findings(),
         }
-
-    # -----------------------------------------------------------------
-    # What the backend team can read off this page once it's wired up
-    # (or just call self.get_config() to get all of it as a dict):
-    #
-    #   self.title_input.text()                 -> str, report title
-    #   self.client_input.text()                -> str, client / organisation ("" if none)
-    #   self.author_input.text()                -> str, who prepared it ("" if none)
-    #   self.format_combo.value()               -> str, "PDF"/"HTML"/"Markdown"/"JSON"/"CSV"
-    #   self.scope_combo.combo.currentText()    -> str, "All scans" or "WS-011 – <target>"
-    #   self.min_severity_combo.value()         -> str, "Low"/"Medium"/"High"/"Critical"
-    #   self.check_include_resolved.isChecked() -> bool
-    #   self.check_summary.isChecked()          -> bool, executive summary
-    #   self.check_chart.isChecked()            -> bool, severity breakdown chart
-    #   self.check_details.isChecked()          -> bool, detailed findings
-    #   self.check_remediation.isChecked()      -> bool, remediation recommendations
-    #   self.check_owasp.isChecked()            -> bool, OWASP Top 10 mapping
-    #   self.check_scan_info.isChecked()        -> bool, scan details appendix
-    #   self.selected_findings()                -> list of finding dicts that pass the scope
-    #
-    # To hook in a real export: replace the body of _on_generate with a call
-    # into the report generator, passing get_config(). _validate() already
-    # runs first, so the config it receives is known to be usable.
-    # -----------------------------------------------------------------

@@ -17,8 +17,8 @@ How another file uses this (you'll do this yourself soon):
     from app.sidebar import Sidebar, NavItem
 
     items = [
-        NavItem("dashboard", "Dashboard", "🏠"),
-        NavItem("static_scan", "Static Scan", "🔎"),
+        NavItem("dashboard", "Dashboard"),
+        NavItem("static_scan", "Static Scan"),
     ]
 
     sidebar = Sidebar(items)

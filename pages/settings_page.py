@@ -6,7 +6,7 @@ authentication, and default scan configuration.
 Layout:
     [ Target Scope               | Authentication & Network ]
     [ Scan Defaults                                         ]
-    [ Storage & Logging                                     ]
+    [ Logging                                               ]
     [ status banner            Restore Defaults | Save      ]
 
 Pure front-end for now. Every setting lives in DEFAULTS below, which is
@@ -55,7 +55,6 @@ DEFAULTS = {
     "headless": True,
     "follow_redirects": True,
     "verify_tls": True,
-    "db_path": "webset.db",
     "log_level": "Info",
 }
 
@@ -239,13 +238,12 @@ class SettingsPage(QWidget):
 
     def _build_storage_card(self):
         card = Card()
-        card.add(section_header("Storage & Logging"))
+        card.add(section_header("Logging"))
 
         row = QHBoxLayout()
-        self.db_path_input = LabeledInput("Results Database (SQLite file)", DEFAULTS["db_path"])
         self.log_level_combo = LabeledCombo("Log Level", LOG_LEVELS)
-        row.addWidget(self.db_path_input, 2)
         row.addWidget(self.log_level_combo, 1)
+        row.addStretch(2)   # keep the dropdown a normal width
         wrap = QWidget()
         wrap.setLayout(row)
         card.add(wrap)
@@ -356,12 +354,11 @@ class SettingsPage(QWidget):
             "headless": self.check_headless.isChecked(),
             "follow_redirects": self.check_follow_redirects.isChecked(),
             "verify_tls": self.check_verify_tls.isChecked(),
-            "db_path": self.db_path_input.text().strip() or DEFAULTS["db_path"],
             "log_level": self.log_level_combo.value(),
         }
 
     def apply_settings(self, settings: dict):
-        """Fill the form from a dict (e.g. loaded from the database). Any
+        """Fill the form from a dict (e.g. loaded from a config file). Any
         missing key falls back to its default, so partial dicts are fine."""
         values = {**DEFAULTS, **settings}
         self.allowed_targets_input.set_text("\n".join(values["allowed_targets"]))
@@ -376,29 +373,4 @@ class SettingsPage(QWidget):
         self.check_headless.setChecked(values["headless"])
         self.check_follow_redirects.setChecked(values["follow_redirects"])
         self.check_verify_tls.setChecked(values["verify_tls"])
-        self.db_path_input.set_text(values["db_path"])
         self.log_level_combo.combo.setCurrentText(values["log_level"])
-
-    # -----------------------------------------------------------------
-    # What the backend team can read off this page once it's wired up
-    # (or just call self.get_settings() to get all of it as a dict):
-    #
-    #   self.allowed_targets()                  -> list[str], one entry per line
-    #   self.check_restrict.isChecked()         -> bool, enforce the allow-list
-    #   self.auth_input.text()                  -> str, default cookie / auth header
-    #   self.proxy_input.text()                 -> str, proxy URL ("" if none)
-    #   self.user_agent_input.text()            -> str
-    #   self.scan_profile_combo.value()         -> str, "Quick"/"Standard"/"Thorough"
-    #   self.timeout_input.text()               -> str, seconds (parse to int)
-    #   self.max_pages_input.text()             -> str, crawl limit (parse to int)
-    #   self.delay_input.text()                 -> str, ms between requests (parse to int)
-    #   self.check_headless.isChecked()         -> bool
-    #   self.check_follow_redirects.isChecked() -> bool
-    #   self.check_verify_tls.isChecked()       -> bool
-    #   self.db_path_input.text()               -> str, SQLite file path
-    #   self.log_level_combo.value()            -> str, "Debug"/"Info"/"Warning"/"Error"
-    #
-    # To persist: connect to settings_saved(dict) and write the dict to the
-    # database/config file. On start-up, read it back and call
-    # apply_settings(saved) so the form shows the saved values.
-    # -----------------------------------------------------------------

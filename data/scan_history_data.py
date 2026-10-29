@@ -107,6 +107,54 @@ def _now_text() -> str:
     return now.strftime("%d/%m/%Y ") + now.strftime("%I:%M %p").lstrip("0").lower()
 
 
+# Scanner severities -> the Reports/Cases buckets.
+_SEVERITY_MAP = {"CRITICAL": "Critical", "HIGH": "High", "MEDIUM": "Medium",
+                 "LOW": "Low", "INFO": "Low"}
+
+# Best-effort OWASP Top 10 (2021) mapping from the scanner's category text.
+# This is a keyword heuristic, not an authoritative classification; anything
+# it does not recognise is labelled so the report does not claim a category.
+_OWASP_KEYWORDS = [
+    (("sql", "xss", "injection", "eval(", "document.write", "innerhtml", "risky pattern"),
+     "A03:2021 Injection"),
+    (("outdated library", "vulnerable", "dependency"),
+     "A06:2021 Vulnerable and Outdated Components"),
+    (("csrf",), "A01:2021 Broken Access Control"),
+    (("plain http", "hardcoded secret", "private key", "jwt", "api key"),
+     "A02:2021 Cryptographic Failures"),
+    (("password field", "autocomplete"),
+     "A07:2021 Identification and Authentication Failures"),
+    (("exposed sensitive file", "header", "cookie", "directory listing"),
+     "A05:2021 Security Misconfiguration"),
+]
+_OWASP_UNMAPPED = "Unmapped (review manually)"
+
+
+def _owasp_for(category: str) -> str:
+    text = (category or "").lower()
+    for keywords, label in _OWASP_KEYWORDS:
+        if any(word in text for word in keywords):
+            return label
+    return _OWASP_UNMAPPED
+
+
+def _detail_findings(result: dict) -> list:
+    """Scanner findings reshaped to the format the Reports page uses:
+    title, severity, owasp, remediation (+ location, description).
+    The code snippet is deliberately left out of the saved history."""
+    details = []
+    for f in result.get("findings", []) or []:
+        details.append({
+            "title": f.get("category") or "Finding",
+            "severity": _SEVERITY_MAP.get(str(f.get("severity", "")).upper(), "Low"),
+            "owasp": _owasp_for(f.get("category", "")),
+            "remediation": f.get("recommendation", ""),
+            "location": f.get("location", ""),
+            "description": f.get("description", ""),
+        })
+    return details
+
+
 def add_scan_result(result: dict, scan_type: str, target: str, profile: str = "") -> dict:
     """
     Record one finished scan in the history.
@@ -138,7 +186,10 @@ def add_scan_result(result: dict, scan_type: str, target: str, profile: str = ""
         "duration": "",
         "severity": severity,
     }
-    if not result.get("ok"):
+    if result.get("ok"):
+        # NOTE: not called "findings" - get_scan_history() uses that key for the count.
+        record["finding_details"] = _detail_findings(result)
+    else:
         record["error"] = result.get("error", "Scan failed.")
 
     real.append(record)
